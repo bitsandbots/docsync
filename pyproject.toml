@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "docsync"
+version = "0.1.0"
+description = "Project documentation wiki and file backup tool"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "CoreConduit" }]
+dependencies = [
+    "click>=8.0",
+    "pyyaml>=6.0",
+    "jinja2>=3.0",
+    "markdown-it-py>=3.0",
+    "zstandard>=0.21",
+]
+
+[project.scripts]
+docsync = "docsync.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]

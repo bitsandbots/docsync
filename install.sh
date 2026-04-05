@@ -82,7 +82,7 @@ echo -e "\n${BOLD}DocSync — Install${NC}"
 echo "──────────────────"
 
 # ── Verify source directory ───────────────────────────────────────────────
-[[ -f "$SCRIPT_DIR/setup.py" ]] || err "setup.py not found in $SCRIPT_DIR — run from the docsync repo root"
+[[ -f "$SCRIPT_DIR/pyproject.toml" ]] || err "pyproject.toml not found in $SCRIPT_DIR — run from the docsync repo root"
 
 # ── Check dependencies ────────────────────────────────────────────────────
 hdr "Checking system dependencies"
@@ -103,8 +103,8 @@ ok "pip3 found"
 
 # ── Install Python package ────────────────────────────────────────────────
 hdr "Installing Python package"
-sudo -u "$INSTALL_USER" pip3 install -e "$SCRIPT_DIR" --break-system-packages -q \
-  && ok "docsync installed (editable, from $SCRIPT_DIR)"
+sudo -u "$INSTALL_USER" pip3 install "$SCRIPT_DIR" --break-system-packages -q \
+  && ok "docsync installed (from $SCRIPT_DIR)"
 
 # Verify the CLI is on PATH
 DOCSYNC_BIN=$(sudo -u "$INSTALL_USER" which docsync 2>/dev/null || true)
