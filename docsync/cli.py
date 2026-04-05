@@ -128,8 +128,8 @@ def check(ctx: click.Context, no_ssh: bool) -> None:
         + path_result.errors
         + backup_result.errors
     )
-    if not no_ssh:
-        all_errors += ssh_result.errors  # type: ignore[possibly-undefined]
+    if remote_sources and not no_ssh:
+        all_errors += ssh_result.errors
 
     all_warnings = (
         result.warnings
