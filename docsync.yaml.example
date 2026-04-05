@@ -1,0 +1,111 @@
+# ~/.config/docsync/docsync.yaml
+# DocSync configuration — copy to ~/.config/docsync/docsync.yaml and edit.
+
+site:
+  title: "CoreConduit Reference Wiki"
+  output_dir: "/var/www/docsync"
+  base_url: "http://localhost:8484"
+  theme: "coreconduit"
+
+sync:
+  schedule: "0 */4 * * *"        # every 4 hours
+  on_change: true
+  log_file: "/var/log/docsync/sync.log"
+
+# ── Backup Configuration ──────────────────────────────────
+backup:
+  enabled: true
+  base_dir: "/mnt/backups/docsync"
+  schedule: "0 2 * * *"          # nightly at 2 AM
+  strategy: "incremental"        # incremental | full
+  retention:
+    daily: 7
+    weekly: 4
+    monthly: 6
+  compression: "zstd"            # zstd | gzip | none
+  verify_after_backup: true
+  max_total_size_gb: 50
+  notifications:
+    on_failure: true
+    on_success: false
+    webhook_url: ""              # optional: ntfy/Gotify URL
+
+sources:
+  - name: "My Project"
+    type: local
+    path: "/home/user/projects/my-project"
+    include:
+      - "docs/**/*.md"
+      - "README.md"
+    exclude:
+      - "node_modules/**"
+      - ".git/**"
+    category: "Projects"
+    icon: "server"
+    backup:
+      enabled: true
+      include_all: true
+      exclude:
+        - "node_modules/**"
+        - ".git/objects/**"
+        - "__pycache__/**"
+        - "*.pyc"
+        - ".venv/**"
+        - "build/**"
+      priority: "normal"         # high | normal | low
+
+  # Remote source example
+  # - name: "Remote Project"
+  #   type: remote
+  #   host: "pi.local"
+  #   user: "pi"
+  #   key: "~/.ssh/id_ed25519"
+  #   path: "/opt/my-project"
+  #   include:
+  #     - "docs/**/*.md"
+  #     - "README.md"
+  #   category: "Servers"
+  #   backup:
+  #     enabled: true
+  #     include_all: true
+  #     priority: "high"
+
+  # Source with DB dump
+  # - name: "My PHP App"
+  #   type: remote
+  #   host: "192.168.1.50"
+  #   user: "deploy"
+  #   port: 2222
+  #   key: "~/.ssh/id_ed25519"
+  #   path: "/var/www/my-app"
+  #   include:
+  #     - "docs/**/*.md"
+  #     - "README.md"
+  #   category: "Applications"
+  #   backup:
+  #     enabled: true
+  #     include_all: true
+  #     exclude:
+  #       - "vendor/**"
+  #     include_db: true
+  #     db:
+  #       type: "mysql"
+  #       name: "my_app_db"
+  #       dump_command: "mysqldump --single-transaction my_app_db"
+  #     priority: "high"
+
+# Optional: extract doc comments from source code
+code_docs:
+  enabled: false
+  languages:
+    python:
+      pattern: '"""(.*?)"""'
+      files: "**/*.py"
+    php:
+      pattern: '/\*\*(.*?)\*/'
+      files: "**/*.php"
+
+search:
+  engine: "lunr"
+  index_code_docs: true
+  index_config_files: false
