@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Search — {{ site_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Search</h1>
+  <div class="page-meta"><span>{{ total_docs }} documents indexed</span></div>
+</div>
+
+<div style="margin-bottom:1.5rem;">
+  <input id="page-search-input" type="search" placeholder="Search all docs…"
+    style="width:100%;max-width:560px;padding:.6rem 1rem;font-size:1rem;
+           border:1px solid var(--border);border-radius:var(--radius);
+           font-family:inherit;outline:none;"
+    autocomplete="off">
+</div>
+
+<div id="search-results"></div>
+
+<!-- Lunr.js (CDN) -->
+<script src="https://unpkg.com/lunr/lunr.js"></script>
+{% endblock %}

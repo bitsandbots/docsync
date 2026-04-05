@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Backups — {{ site_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">Backup Health</h1>
+  <div class="page-meta">
+    {% if backup_statuses %}
+    <span>{{ backup_statuses | length }} source{% if backup_statuses | length != 1 %}s{% endif %} monitored</span>
+    {% endif %}
+    <span class="meta-tag">docsync backup status</span>
+  </div>
+</div>
+
+{# ── Alert banners ─────────────────────────────────────────────────────────── #}
+{% for alert in alerts %}
+<div class="callout {% if alert.level == 'err' %}warn{% else %}note{% endif %}" style="{% if alert.level == 'err' %}background:var(--cc-error-bg);border-color:rgba(212,48,48,.3);color:#7a2020;{% endif %}">
+  <span class="callout-icon">{% if alert.level == 'err' %}✗{% else %}⚠{% endif %}</span>
+  <div>{{ alert.message }}</div>
+</div>
+{% endfor %}
+
+{# ── Per-source status cards ───────────────────────────────────────────────── #}
+{% if backup_statuses %}
+<div class="section-header">
+  <span class="section-title">Source Status</span>
+  <span class="section-count">{{ backup_statuses | length }} source{% if backup_statuses | length != 1 %}s{% endif %}</span>
+</div>
+
+<div class="card-grid">
+  {% for src in backup_statuses %}
+  <div class="card backup-card">
+    <div class="card-bar {% if src.health == 'ok' %}bar-ok{% elif src.health == 'warn' %}bar-warn{% else %}bar-err{% endif %}"></div>
+    <div class="card-body">
+      <div class="card-title" style="display:flex;align-items:center;gap:.5rem;">
+        <span class="health-dot health-{{ src.health }}"></span>
+        <a href="{{ root_path }}{{ src.snapshot_url }}">{{ src.source_name }}</a>
+      </div>
+      <div class="backup-stats">
+        <div class="backup-stat">
+          <span class="stat-label">Snapshots</span>
+          <span class="stat-value">{{ src.snapshot_count }}</span>
+        </div>
+        <div class="backup-stat">
+          <span class="stat-label">Total Size</span>
+          <span class="stat-value">{{ src.total_size_human }}</span>
+        </div>
+        <div class="backup-stat">
+          <span class="stat-label">Files</span>
+          <span class="stat-value">{{ src.latest_file_count or "—" }}</span>
+        </div>
+        <div class="backup-stat">
+          <span class="stat-label">Duration</span>
+          <span class="stat-value">{% if src.latest_duration %}{{ "%.1f"|format(src.latest_duration) }}s{% else %}—{% endif %}</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <span class="card-stat">
+        <span class="status-pill status-{{ src.health }}">{{ src.health | upper }}</span>
+        Last: {{ src.latest_ts_human }}
+      </span>
+      <a href="{{ root_path }}{{ src.snapshot_url }}" style="font-size:.75rem;font-weight:600;">Snapshots →</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{# ── Storage gauge ─────────────────────────────────────────────────────────── #}
+{% if storage_max_bytes %}
+<div class="section-header" style="margin-top:2rem;">
+  <span class="section-title">Storage Usage</span>
+  <span class="section-count">{{ storage_used_human }} / {{ storage_max_human }}</span>
+</div>
+<div class="storage-gauge-wrap">
+  <div class="storage-gauge">
+    <div class="storage-bar {% if storage_pct >= 90 %}bar-err{% elif storage_pct >= 75 %}bar-warn{% else %}bar-ok{% endif %}"
+         style="width:{{ storage_pct }}%"></div>
+  </div>
+  <span class="storage-pct">{{ storage_pct }}%</span>
+</div>
+{% endif %}
+
+{# ── Recent backup events ──────────────────────────────────────────────────── #}
+{% if backup_events %}
+<div class="section-header" style="margin-top:2rem;">
+  <span class="section-title">Recent Events</span>
+  <span class="section-count">last {{ backup_events | length }}</span>
+</div>
+<div class="event-log">
+  <table class="backup-table">
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Source</th>
+        <th>Status</th>
+        <th>Files</th>
+        <th>Size</th>
+        <th>Duration</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for evt in backup_events %}
+      <tr>
+        <td class="mono">{{ evt.ts_human }}</td>
+        <td>{{ evt.source }}</td>
+        <td><span class="status-pill status-{% if evt.status == 'ok' %}ok{% else %}err{% endif %}">{{ evt.status | upper }}</span></td>
+        <td class="mono">{{ evt.file_count or "—" }}</td>
+        <td class="mono">{% if evt.size_bytes %}{{ evt.size_bytes | filesizeformat }}{% else %}—{% endif %}</td>
+        <td class="mono">{% if evt.duration_seconds %}{{ "%.1f"|format(evt.duration_seconds) }}s{% else %}—{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% else %}
+<div class="callout note">
+  <span class="callout-icon">ℹ</span>
+  <div>
+    No backup-enabled sources found. Add <code>backup: enabled: true</code> to your sources
+    in <code>docsync.yaml</code> and run <code>docsync backup run</code> to get started.
+  </div>
+</div>
+{% endif %}
+{% endblock %}

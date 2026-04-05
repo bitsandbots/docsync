@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}{{ source.name }} — {{ site_title }}{% endblock %}
+{% block description %}{{ source.name }} documentation — {{ source.doc_count }} pages{% endblock %}
+
+{% block content %}
+<nav class="breadcrumbs">
+  <a href="{{ root_path }}index.html">Dashboard</a>
+  <span class="sep">/</span>
+  {% if source.category %}<span>{{ source.category }}</span><span class="sep">/</span>{% endif %}
+  <span class="current">{{ source.name }}</span>
+</nav>
+
+<div class="page-header">
+  <h1 class="page-title">{{ source.name }}</h1>
+  <div class="page-meta">
+    <span class="pill {{ 'blue' if source.type == 'local' else 'orange' }}">{{ source.type }}</span>
+    {% if source.backup_enabled %}
+    <span class="pill green"><span class="status-dot ok"></span> backup active</span>
+    {% endif %}
+    <span class="meta-tag">{{ source.doc_count }} document{% if source.doc_count != 1 %}s{% endif %}</span>
+    <span class="meta-tag">{{ source.path }}</span>
+  </div>
+</div>
+
+{% if docs %}
+<ul class="entry-list">
+  {% for doc in docs %}
+  <li>
+    <a href="{{ root_path }}{{ doc.url }}">
+      <div>
+        <div class="entry-title">{{ doc.title }}</div>
+        {% if doc.description %}<div class="entry-desc">{{ doc.description }}</div>{% endif %}
+      </div>
+      {% if doc.tags %}
+      <div class="entry-meta">
+        {% for tag in doc.tags %}<span class="meta-tag">{{ tag }}</span> {% endfor %}
+      </div>
+      {% endif %}
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="callout note">
+  <span class="callout-icon">ℹ</span>
+  <div>No documents found for this source. Run <code>docsync sync --source "{{ source.name }}"</code> to collect docs.</div>
+</div>
+{% endif %}
+{% endblock %}

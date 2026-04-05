@@ -19,9 +19,8 @@ log = logging.getLogger(__name__)
 
 # Locate templates and static dirs relative to this package file
 _PKG_DIR = Path(__file__).parent
-_REPO_DIR = _PKG_DIR.parent
-TEMPLATES_DIR = _REPO_DIR / "templates"
-STATIC_DIR = _REPO_DIR / "static"
+TEMPLATES_DIR = _PKG_DIR / "templates"
+STATIC_DIR = _PKG_DIR / "static"
 
 _SLUG_RE = re.compile(r"[^\w\s-]")
 _COLLAPSE_RE = re.compile(r"[\s_]+")

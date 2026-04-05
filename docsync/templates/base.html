@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" data-root="{{ root_path }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ page_title }} — {{ site_title }}{% endblock %}</title>
+  <meta name="description" content="{% block description %}{{ site_title }} — self-hosted documentation wiki{% endblock %}">
+  <link rel="stylesheet" href="{{ root_path }}assets/style.css">
+</head>
+<body>
+
+<!-- ── Header ─────────────────────────────────────────────────────────── -->
+<header class="site-header">
+  <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  </button>
+
+  <a href="{{ root_path }}index.html" class="site-logo">
+    Core<span class="accent">Doc</span>
+  </a>
+
+  <nav class="header-actions" style="margin-right: auto; margin-left: 1.5rem; display:flex; gap:.25rem;">
+    <a href="{{ root_path }}index.html" class="header-badge">Dashboard</a>
+    <a href="{{ root_path }}search.html" class="header-badge">Search</a>
+    <a href="{{ root_path }}updates.html" class="header-badge">Updates</a>
+    <a href="{{ root_path }}backups.html" class="header-badge">Backups</a>
+  </nav>
+
+  <div class="header-search">
+    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+    </svg>
+    <input id="search-input" type="search" placeholder="Search docs…" autocomplete="off">
+  </div>
+
+  <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">
+    <svg id="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+    <svg id="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+      <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/>
+      <line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/>
+      <line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+    </svg>
+  </button>
+</header>
+
+<!-- Mobile sidebar overlay -->
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<!-- ── Body layout ────────────────────────────────────────────────────── -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <nav>
+      <span class="sidebar-label">Navigation</span>
+
+      <a href="{{ root_path }}index.html" class="sidebar-link{% if current_page == 'home' %} active{% endif %}">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        Dashboard
+      </a>
+      <a href="{{ root_path }}updates.html" class="sidebar-link{% if current_page == 'updates' %} active{% endif %}">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        Recent Updates
+      </a>
+      <a href="{{ root_path }}search.html" class="sidebar-link{% if current_page == 'search' %} active{% endif %}">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        Search
+      </a>
+      <a href="{{ root_path }}backups.html" class="sidebar-link{% if current_page == 'backups' %} active{% endif %}">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Backups
+      </a>
+
+      <div class="sidebar-divider"></div>
+
+      {% for category in nav_categories %}
+      <span class="sidebar-label">{{ category.name }}</span>
+      {% for source in category.sources %}
+      <a href="{{ root_path }}{{ source.index_url }}" class="sidebar-link{% if current_source == source.name %} active{% endif %}">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        {{ source.name }}
+        {% if source.doc_count %}
+        <span style="margin-left:auto;font-size:.65rem;opacity:.5;">{{ source.doc_count }}</span>
+        {% endif %}
+      </a>
+      {% if current_source == source.name and source.docs %}
+      <div class="sidebar-project">
+        {% for doc in source.docs %}
+        <a href="{{ root_path }}{{ doc.url }}" class="sidebar-link{% if current_doc_url == doc.url %} active{% endif %}">
+          {{ doc.title }}
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endfor %}
+      {% endfor %}
+    </nav>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="page-content">
+      {% block content %}{% endblock %}
+    </div>
+
+    <footer class="site-footer">
+      <span class="footer-logo">Core<span class="accent">Doc</span></span>
+      <span>{{ site_title }} · Last synced: {{ last_synced }}</span>
+    </footer>
+  </main>
+
+</div><!-- .layout -->
+
+<script src="{{ root_path }}assets/search.js"></script>
+<script>
+(function() {
+  // ── Dark mode ──
+  var html = document.documentElement;
+  var toggle = document.getElementById('theme-toggle');
+  var moon = document.getElementById('theme-icon-moon');
+  var sun  = document.getElementById('theme-icon-sun');
+
+  function applyTheme(dark) {
+    html.setAttribute('data-theme', dark ? 'dark' : 'light');
+    moon.style.display = dark ? 'none' : '';
+    sun.style.display  = dark ? '' : 'none';
+  }
+
+  var saved = localStorage.getItem('docsync-theme');
+  var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(saved ? saved === 'dark' : prefersDark);
+
+  toggle.addEventListener('click', function() {
+    var isDark = html.getAttribute('data-theme') === 'dark';
+    applyTheme(!isDark);
+    localStorage.setItem('docsync-theme', !isDark ? 'dark' : 'light');
+  });
+
+  // ── Mobile sidebar ──
+  var sidebar = document.getElementById('sidebar');
+  var overlay = document.getElementById('sidebar-overlay');
+  var sidebarBtn = document.getElementById('sidebar-toggle');
+
+  function openSidebar() {
+    sidebar.classList.add('open');
+    overlay.classList.add('open');
+  }
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('open');
+  }
+
+  sidebarBtn.addEventListener('click', function() {
+    sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+  });
+  overlay.addEventListener('click', closeSidebar);
+})();
+</script>
+</body>
+</html>
