@@ -43,6 +43,9 @@ def latest_snapshot(source_backup_dir: Path) -> Optional[Path]:
 
 
 def _write_metadata(snapshot_dir: Path, meta: dict) -> None:
+    # Ensure the snapshot dir is writable — rsync -a may have synced read-only
+    # permissions from the source directory onto the snapshot directory itself.
+    snapshot_dir.chmod(snapshot_dir.stat().st_mode | 0o300)
     (snapshot_dir / SNAPSHOT_META_FILE).write_text(
         json.dumps(meta, indent=2), encoding="utf-8"
     )
