@@ -243,15 +243,18 @@ def check_ssh_connectivity(config: dict, result: ValidationResult) -> None:
         user = src.get("user", "")
         port = src.get("port", 22)
         key = src.get("key")
+        strict_host_checking = src.get("strict_host_checking", False)
 
         if not host or not user:
             continue  # schema error already recorded
+
+        host_key_opt = "StrictHostKeyChecking=yes" if strict_host_checking else "StrictHostKeyChecking=no"
 
         cmd = [
             "ssh",
             "-o", "BatchMode=yes",
             "-o", "ConnectTimeout=5",
-            "-o", "StrictHostKeyChecking=no",
+            "-o", host_key_opt,
             "-p", str(port),
         ]
         if key:

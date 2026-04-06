@@ -37,7 +37,10 @@ def run_db_dump(source: dict, snapshot_dir: Path) -> Optional[str]:
         user = source["user"]
         port = source.get("port", 22)
         key = source.get("key")
+        strict_host_checking = source.get("strict_host_checking", False)
+        host_key_opt = "StrictHostKeyChecking=yes" if strict_host_checking else "StrictHostKeyChecking=no"
         ssh_cmd = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10",
+                   "-o", host_key_opt,
                    "-p", str(port)]
         if key:
             ssh_cmd += ["-i", str(resolve_path(key))]

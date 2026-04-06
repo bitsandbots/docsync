@@ -3,6 +3,7 @@
 import logging
 import time
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -78,10 +79,11 @@ def run_sync(
     manifest.save()
 
     # Generate static site — pass changed docs as "recent updates"
+    sync_ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
     if all_docs or not stats.errors:
         try:
             stats.pages_generated = generate_site(
-                config, all_docs, recent_docs=all_docs
+                config, all_docs, recent_docs=all_docs, sync_timestamp=sync_ts
             )
         except Exception as exc:
             log.error("Site generation failed: %s", exc)

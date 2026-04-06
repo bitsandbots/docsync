@@ -125,7 +125,12 @@ def _make_env() -> Environment:
 class SiteGenerator:
     """Generates the full static site from config and parsed documents."""
 
-    def __init__(self, config: dict, docs: list[ParsedDoc]) -> None:
+    def __init__(
+        self,
+        config: dict,
+        docs: list[ParsedDoc],
+        sync_timestamp: Optional[str] = None,
+    ) -> None:
         self._config = config
         self._all_docs = docs
 
@@ -140,7 +145,7 @@ class SiteGenerator:
 
         self._nav = _build_nav(config, self._docs_by_source)
         self._env = _make_env()
-        self._last_synced = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+        self._last_synced = sync_timestamp or datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 
     # ── Shared template context ────────────────────────────────────────────────
 
@@ -219,7 +224,7 @@ class SiteGenerator:
                 "source_name": doc.source_name,
                 "rel_path": doc.rel_path,
                 "url": f"{cat_slug}/{src_slug}/{_slugify(doc.title)}.html",
-                "synced_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "synced_at": self._last_synced,
             })
         ctx["updates"] = updates
         self._write("updates.html", self._render("updates.html", ctx))
@@ -467,7 +472,13 @@ def generate_site(
     config: dict,
     docs: list[ParsedDoc],
     recent_docs: Optional[list] = None,
+    sync_timestamp: Optional[str] = None,
 ) -> int:
-    """Generate the static site. Returns page count."""
-    gen = SiteGenerator(config, docs)
+    """Generate the static site. Returns page count.
+    
+    Args:
+        sync_timestamp: Optional timestamp string for "last synced" display.
+            If None, uses current time.
+    """
+    gen = SiteGenerator(config, docs, sync_timestamp=sync_timestamp)
     return gen.generate(recent_docs=recent_docs)

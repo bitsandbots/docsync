@@ -5,6 +5,7 @@ each collected file path (relative to source root) to its last-known
 hash and sync timestamp. Only changed files are re-processed.
 """
 
+import fcntl
 import json
 import time
 from pathlib import Path
@@ -16,7 +17,10 @@ DEFAULT_MANIFEST_PATH = Path("~/.cache/docsync/manifest.json").expanduser()
 
 
 class Manifest:
-    """Persistent dict of {source_name/rel_path -> {hash, synced_at}}."""
+    """Persistent dict of {source_name/rel_path -> {hash, synced_at}}.
+    
+    Uses file locking to prevent corruption from concurrent processes.
+    """
 
     def __init__(self, path: Optional[Path] = None) -> None:
         self._path = Path(path) if path else DEFAULT_MANIFEST_PATH
@@ -29,16 +33,24 @@ class Manifest:
         if self._path.exists():
             try:
                 with open(self._path) as fh:
-                    self._data = json.load(fh)
+                    fcntl.flock(fh.fileno(), fcntl.LOCK_SH)
+                    try:
+                        self._data = json.load(fh)
+                    finally:
+                        fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
             except (json.JSONDecodeError, OSError):
                 self._data = {}
 
     def save(self) -> None:
-        """Persist the manifest to disk."""
+        """Persist the manifest to disk with exclusive locking."""
         self._path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self._path.with_suffix(".tmp")
         with open(tmp, "w") as fh:
-            json.dump(self._data, fh, indent=2)
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+            try:
+                json.dump(self._data, fh, indent=2)
+            finally:
+                fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
         tmp.replace(self._path)
 
     # ── Change detection ──────────────────────────────────────────────────────

@@ -141,14 +141,23 @@ def _collect_local(source: dict, manifest: Manifest) -> CollectResult:
 
 
 def _build_ssh_opts(source: dict) -> list[str]:
-    """Build SSH option flags for rsync -e."""
+    """Build SSH option flags for rsync -e.
+    
+    Security note: StrictHostKeyChecking defaults to 'no' for convenience
+    (accepts new host keys automatically). Set strict_host_checking: true
+    in source config to require known_hosts verification.
+    """
     port = source.get("port", 22)
     key = source.get("key")
+    strict_host_checking = source.get("strict_host_checking", False)
+    
+    host_key_opt = "StrictHostKeyChecking=yes" if strict_host_checking else "StrictHostKeyChecking=no"
+    
     opts = [
         "ssh",
         "-o", "BatchMode=yes",
         "-o", "ConnectTimeout=10",
-        "-o", "StrictHostKeyChecking=no",
+        "-o", host_key_opt,
         "-o", "ServerAliveInterval=15",
         "-o", "ServerAliveCountMax=3",
         "-o", "GSSAPIAuthentication=no",

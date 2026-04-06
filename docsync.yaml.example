@@ -61,6 +61,7 @@ sources:
   #   user: "pi"
   #   key: "~/.ssh/id_ed25519"
   #   path: "/opt/my-project"
+  #   strict_host_checking: false   # set true to require known_hosts
   #   include:
   #     - "docs/**/*.md"
   #     - "README.md"

@@ -20,13 +20,11 @@ def create_app(config: dict, output_dir: Path, config_path: Path | None = None) 
     app = Flask(__name__, template_folder="templates")
     app.config["OUTPUT_DIR"] = str(output_dir)
     app.config["DOCSYNC_CONFIG"] = str(config_path) if config_path else None
-
-    # Mutable state so /api/reload can refresh without restarting.
-    _state = {
-        "sources":      [s["name"] for s in config.get("sources", [])],
-        "site_title":   config.get("site", {}).get("title", "DocSync"),
-        "base_dir_str": config.get("backup", {}).get("base_dir"),
-    }
+    
+    # Store initial state in app.config (reloaded via /api/reload)
+    app.config["SOURCES"] = [s["name"] for s in config.get("sources", [])]
+    app.config["SITE_TITLE"] = config.get("site", {}).get("title", "DocSync")
+    app.config["BACKUP_BASE_DIR"] = config.get("backup", {}).get("base_dir")
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -72,8 +70,8 @@ def create_app(config: dict, output_dir: Path, config_path: Path | None = None) 
     def admin():
         return render_template(
             "admin.html",
-            sources=_state["sources"],
-            site_title=_state["site_title"],
+            sources=app.config["SOURCES"],
+            site_title=app.config["SITE_TITLE"],
         )
 
     # ── API: sync ─────────────────────────────────────────────────────────────
@@ -159,7 +157,7 @@ def create_app(config: dict, output_dir: Path, config_path: Path | None = None) 
     @app.route("/api/backup/snapshots")
     def api_backup_snapshots():
         source = request.args.get("source", "")
-        base_dir_str = _state["base_dir_str"]
+        base_dir_str = app.config["BACKUP_BASE_DIR"]
         if not source or not base_dir_str:
             return jsonify([])
 
@@ -192,7 +190,7 @@ def create_app(config: dict, output_dir: Path, config_path: Path | None = None) 
 
     @app.route("/admin/config")
     def admin_config():
-        return render_template("config.html", site_title=_state["site_title"])
+        return render_template("config.html", site_title=app.config["SITE_TITLE"])
 
     @app.route("/api/config")
     def api_config_get():
@@ -204,8 +202,10 @@ def create_app(config: dict, output_dir: Path, config_path: Path | None = None) 
         except FileNotFoundError:
             raw = ""
             parsed = {}
-        except Exception as exc:  # noqa: BLE001
-            return jsonify({"error": str(exc)}), 500
+        except yaml.YAMLError as exc:
+            return jsonify({"error": f"YAML parse error: {exc}"}), 500
+        except OSError as exc:
+            return jsonify({"error": f"Cannot read config: {exc}"}), 500
         return jsonify({"raw_yaml": raw, "config": parsed, "config_path": str(cfg_path)})
 
     @app.route("/api/config/raw", methods=["POST"])
@@ -254,7 +254,7 @@ def create_app(config: dict, output_dir: Path, config_path: Path | None = None) 
                 tmp.write_text(raw)
                 tmp.rename(cfg_path)
                 yield "data: Config saved.\n\n"
-            except Exception as exc:  # noqa: BLE001
+            except (yaml.YAMLError, OSError) as exc:
                 yield f"data: Error saving: {exc}\n\n"
                 yield "data: [exit:1]\n\n"
                 return
@@ -283,14 +283,14 @@ def create_app(config: dict, output_dir: Path, config_path: Path | None = None) 
         except OSError as exc:
             return jsonify({"error": str(exc)}), 500
 
-        _state["sources"]      = [s["name"] for s in new_cfg.get("sources", [])]
-        _state["site_title"]   = new_cfg.get("site", {}).get("title", "DocSync")
-        _state["base_dir_str"] = new_cfg.get("backup", {}).get("base_dir")
+        app.config["SOURCES"] = [s["name"] for s in new_cfg.get("sources", [])]
+        app.config["SITE_TITLE"] = new_cfg.get("site", {}).get("title", "DocSync")
+        app.config["BACKUP_BASE_DIR"] = new_cfg.get("backup", {}).get("base_dir")
 
         return jsonify({
             "ok": True,
-            "sources": _state["sources"],
-            "site_title": _state["site_title"],
+            "sources": app.config["SOURCES"],
+            "site_title": app.config["SITE_TITLE"],
         })
 
     return app
