@@ -1,5 +1,5 @@
-/* DocSync — CoreConductor Theme
-   Tokens from ~/coreconductor-theme.css
+/* DocSync — CoreConduit Brand System v2.1 Silver
+   Tokens: ~/coreconduit-brand-system-v2.1-silver.html
    Fonts: Exo 2 · Plus Jakarta Sans · IBM Plex Mono
 */
 
@@ -622,16 +622,16 @@ a:hover { color: var(--cc-blue-600); text-decoration: underline; }
 
 /* ── Footer ─────────────────────────────────────────────────────────────────── */
 .site-footer {
-  border-top: 1px solid var(--cc-border-subtle);
+  border-top: 1px solid var(--cc-navy-700);
   padding: .875rem 2.25rem;
   font-family: var(--cc-font-mono);
   font-size: .72rem;
-  color: var(--cc-text-faint);
+  color: var(--cc-silver-400, #a8aeb9);
   display: flex; align-items: center; justify-content: space-between;
-  background: var(--cc-bg-panel);
+  background: var(--cc-navy-800);
 }
-.footer-logo { font-family: var(--cc-font-display); font-weight: 700; color: var(--cc-text-muted); }
-.footer-logo .accent { color: var(--cc-orange-500); }
+.footer-logo { font-family: var(--cc-font-display); font-weight: 700; color: var(--cc-text-on-dark); }
+.footer-logo .accent { color: var(--cc-orange-400); }
 
 /* ── Backup placeholder ──────────────────────────────────────────────────────── */
 .backup-placeholder {
