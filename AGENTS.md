@@ -1,5 +1,10 @@
 # Agent Instructions
 
+## Documentation
+
+- **[docs/cli.md](docs/cli.md)** — Full CLI reference
+- **[docs/opencode.md](docs/opencode.md)** — OpenCode skills and configuration
+
 ## Commands
 
 ```bash
