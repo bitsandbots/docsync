@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Config Editor — {{ site_title }}</title>
+  <link rel="stylesheet" href="/assets/style.css">
+  <style>
+    /* ── Tab switcher ──────────────────────────────────────────────────── */
+    .tab-bar {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid var(--border, #e2e8f0);
+      margin-bottom: 1.5rem;
+    }
+    .tab-btn {
+      padding: .5rem 1.25rem;
+      border: none;
+      background: none;
+      font-size: .85rem;
+      font-weight: 600;
+      color: var(--text-muted, #64748b);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: color .15s, border-color .15s;
+    }
+    .tab-btn.active {
+      color: var(--accent, #3b82f6);
+      border-bottom-color: var(--accent, #3b82f6);
+    }
+
+    /* ── Config sections ───────────────────────────────────────────────── */
+    .cfg-section {
+      border: 1px solid var(--border, #e2e8f0);
+      border-radius: 8px;
+      margin-bottom: 1.25rem;
+      overflow: hidden;
+    }
+    .cfg-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .65rem 1rem;
+      background: var(--sidebar-bg, #1e293b);
+      color: var(--sidebar-text, #e2e8f0);
+      font-size: .8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      cursor: pointer;
+      user-select: none;
+    }
+    .cfg-section-header .chevron { transition: transform .2s; }
+    .cfg-section-header.collapsed .chevron { transform: rotate(-90deg); }
+    .cfg-section-body {
+      padding: 1rem 1.25rem;
+    }
+    .cfg-section-body.hidden { display: none; }
+
+    /* ── Field rows ────────────────────────────────────────────────────── */
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: .75rem 1.25rem;
+    }
+    .field-group { display: flex; flex-direction: column; gap: .25rem; }
+    .field-group label {
+      font-size: .75rem;
+      font-weight: 600;
+      color: var(--text-muted, #64748b);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .field-group input[type=text],
+    .field-group input[type=number],
+    .field-group input[type=url],
+    .field-group select {
+      padding: .4rem .6rem;
+      border: 1px solid var(--border, #cbd5e1);
+      border-radius: 5px;
+      background: var(--input-bg, #f8fafc);
+      color: var(--text, #1e293b);
+      font-size: .85rem;
+      font-family: inherit;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .field-group.checkbox-group {
+      flex-direction: row;
+      align-items: center;
+      gap: .5rem;
+    }
+    .field-group.checkbox-group label {
+      text-transform: none;
+      font-size: .85rem;
+      font-weight: 500;
+      color: var(--text, #1e293b);
+      cursor: pointer;
+    }
+    .retention-row {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: .75rem;
+    }
+    .retention-row .rfield {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      font-size: .82rem;
+      color: var(--text-muted, #64748b);
+    }
+    .retention-row .rfield input {
+      width: 60px;
+      padding: .35rem .4rem;
+      border: 1px solid var(--border, #cbd5e1);
+      border-radius: 5px;
+      background: var(--input-bg, #f8fafc);
+      color: var(--text, #1e293b);
+      font-size: .85rem;
+      text-align: center;
+    }
+    .field-hint { font-size: .72rem; color: var(--text-muted, #94a3b8); margin-top: .15rem; }
+
+    /* ── Sources table ─────────────────────────────────────────────────── */
+    .sources-toolbar {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: .75rem;
+    }
+    .sources-table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+    .sources-table th {
+      padding: .45rem .7rem;
+      background: var(--sidebar-bg, #1e293b);
+      color: #e2e8f0;
+      font-weight: 600;
+      text-align: left;
+      font-size: .78rem;
+    }
+    .sources-table td {
+      padding: .45rem .7rem;
+      border-bottom: 1px solid var(--border, #e2e8f0);
+      vertical-align: middle;
+    }
+    .badge-type {
+      display: inline-block;
+      padding: .1rem .45rem;
+      border-radius: 3px;
+      font-size: .7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .badge-local  { background: #dbeafe; color: #1d4ed8; }
+    .badge-remote { background: #fce7f3; color: #be185d; }
+    .badge-bk-on  { background: #dcfce7; color: #166534; font-size:.7rem; padding:.1rem .4rem; border-radius:3px; }
+    .badge-bk-off { background: #f1f5f9; color: #94a3b8; font-size:.7rem; padding:.1rem .4rem; border-radius:3px; }
+    .btn-icon {
+      padding: .3rem .55rem;
+      border: 1px solid var(--border, #cbd5e1);
+      border-radius: 4px;
+      background: none;
+      cursor: pointer;
+      font-size: .75rem;
+      color: var(--text-muted, #64748b);
+      transition: background .12s;
+    }
+    .btn-icon:hover { background: var(--border, #e2e8f0); }
+    .btn-icon.danger:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+
+    /* ── YAML editor ───────────────────────────────────────────────────── */
+    #yaml-editor {
+      width: 100%;
+      min-height: 480px;
+      padding: 1rem;
+      border: 1px solid var(--border, #e2e8f0);
+      border-radius: 8px;
+      background: #0a0e1a;
+      color: #c8e6a0;
+      font-family: 'IBM Plex Mono', 'JetBrains Mono', monospace;
+      font-size: .8rem;
+      line-height: 1.6;
+      resize: vertical;
+      box-sizing: border-box;
+    }
+    .yaml-notice {
+      padding: .5rem .85rem;
+      background: #fef3c7;
+      color: #92400e;
+      font-size: .78rem;
+      border-radius: 6px;
+      margin-bottom: .75rem;
+    }
+
+    /* ── Save bar ──────────────────────────────────────────────────────── */
+    .save-bar {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: .85rem 0 .5rem;
+    }
+    .btn-save {
+      padding: .5rem 1.4rem;
+      border: none;
+      border-radius: 6px;
+      background: var(--accent, #3b82f6);
+      color: #fff;
+      font-size: .9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn-save:hover { opacity: .85; }
+    .btn-save:disabled { opacity: .5; cursor: not-allowed; }
+    .config-path-label {
+      font-size: .75rem;
+      color: var(--text-muted, #94a3b8);
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    /* ── Output log ────────────────────────────────────────────────────── */
+    #output-panel {
+      border: 1px solid var(--border, #e2e8f0);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 1rem;
+    }
+    #output-panel .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .6rem 1rem;
+      background: var(--sidebar-bg, #1e293b);
+      color: var(--sidebar-text, #e2e8f0);
+      font-size: .8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    #output-panel .panel-header button {
+      background: none; border: none; color: inherit; cursor: pointer;
+      opacity: .6; font-size: .75rem;
+    }
+    #output-panel .panel-header button:hover { opacity: 1; }
+    #log {
+      background: #0a0e1a;
+      color: #c8e6a0;
+      font-family: 'IBM Plex Mono', 'JetBrains Mono', monospace;
+      font-size: .78rem;
+      line-height: 1.55;
+      padding: 1rem;
+      min-height: 160px;
+      max-height: 360px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    #log .ts { color: #4a5568; margin-right: .4rem; }
+    #status-banner {
+      display: none;
+      padding: .6rem 1rem;
+      font-size: .85rem;
+      font-weight: 600;
+    }
+    #status-banner.ok  { background: #c6f6d5; color: #276749; display: block; }
+    #status-banner.err { background: #fed7d7; color: #9b2c2c; display: block; }
+
+    /* ── Source modal ──────────────────────────────────────────────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 100;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 3rem;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--card-bg, #fff);
+      border: 1px solid var(--border, #e2e8f0);
+      border-radius: 10px;
+      width: min(680px, 95vw);
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .85rem 1.25rem;
+      background: var(--sidebar-bg, #1e293b);
+      color: #e2e8f0;
+      border-radius: 10px 10px 0 0;
+      font-weight: 700;
+      font-size: .9rem;
+    }
+    .modal-header button {
+      background: none; border: none; color: inherit; cursor: pointer;
+      font-size: 1.1rem; opacity: .7;
+    }
+    .modal-body { padding: 1.25rem; overflow-y: auto; flex: 1; }
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: .6rem;
+      padding: .85rem 1.25rem;
+      border-top: 1px solid var(--border, #e2e8f0);
+    }
+    .remote-only { display: none; }
+    .remote-only.show { display: contents; }
+    .modal-section-label {
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-muted, #64748b);
+      margin: 1rem 0 .5rem;
+      padding-bottom: .25rem;
+      border-bottom: 1px solid var(--border, #e2e8f0);
+    }
+    textarea.patterns-field {
+      width: 100%;
+      min-height: 64px;
+      padding: .4rem .6rem;
+      border: 1px solid var(--border, #cbd5e1);
+      border-radius: 5px;
+      background: var(--input-bg, #f8fafc);
+      color: var(--text, #1e293b);
+      font-size: .82rem;
+      font-family: 'IBM Plex Mono', monospace;
+      resize: vertical;
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="/index.html" class="site-logo">Core<span class="accent">Doc</span></a>
+  <nav class="header-actions" style="margin-right:auto;margin-left:1.5rem;display:flex;gap:.25rem;">
+    <a href="/index.html" class="header-badge">Dashboard</a>
+    <a href="/search.html" class="header-badge">Search</a>
+    <a href="/updates.html" class="header-badge">Updates</a>
+    <a href="/backups.html" class="header-badge">Backups</a>
+    <a href="/admin" class="header-badge">Control</a>
+    <a href="/admin/config" class="header-badge" style="background:var(--accent,#3b82f6);color:#fff;">Config</a>
+  </nav>
+  <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">
+    <svg id="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+    <svg id="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+      <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/>
+      <line x1="12" y1="21" x2="12" y2="23"/>
+    </svg>
+  </button>
+</header>
+
+<div class="layout">
+
+  <aside class="sidebar" id="sidebar">
+    <nav>
+      <span class="sidebar-label">Config Editor</span>
+      <a href="#site"    class="sidebar-link">Site</a>
+      <a href="#sync"    class="sidebar-link">Sync</a>
+      <a href="#backup"  class="sidebar-link">Backup</a>
+      <a href="#sources" class="sidebar-link">Sources</a>
+      <a href="#output-panel" class="sidebar-link">Output Log</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="page-content">
+
+      <div style="display:flex;align-items:baseline;gap:1rem;margin-bottom:1.25rem;">
+        <h1 style="margin:0;">Config Editor</h1>
+        <span class="config-path-label" id="config-path-label">Loading…</span>
+      </div>
+
+      <!-- Tab bar -->
+      <div class="tab-bar">
+        <button class="tab-btn active" id="tab-form-btn" onclick="switchTab('form')">Form</button>
+        <button class="tab-btn" id="tab-yaml-btn" onclick="switchTab('yaml')">YAML</button>
+      </div>
+
+      <!-- ── Form tab ─────────────────────────────────────────────────── -->
+      <div id="tab-form">
+
+        <!-- Site -->
+        <div class="cfg-section" id="site">
+          <div class="cfg-section-header" onclick="toggleSection(this)">
+            <span>Site</span>
+            <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="cfg-section-body">
+            <div class="field-grid">
+              <div class="field-group">
+                <label for="site-title">Title</label>
+                <input type="text" id="site-title" placeholder="My Documentation Wiki">
+              </div>
+              <div class="field-group">
+                <label for="site-output-dir">Output Directory <span style="color:#ef4444">*</span></label>
+                <input type="text" id="site-output-dir" placeholder="/tmp/docsync-out">
+              </div>
+              <div class="field-group">
+                <label for="site-base-url">Base URL <span style="color:#ef4444">*</span></label>
+                <input type="text" id="site-base-url" placeholder="http://localhost:8484">
+              </div>
+              <div class="field-group">
+                <label for="site-theme">Theme</label>
+                <input type="text" id="site-theme" placeholder="coreconduit">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sync -->
+        <div class="cfg-section" id="sync">
+          <div class="cfg-section-header" onclick="toggleSection(this)">
+            <span>Sync</span>
+            <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="cfg-section-body">
+            <div class="field-grid">
+              <div class="field-group">
+                <label for="sync-schedule">Schedule (cron)</label>
+                <input type="text" id="sync-schedule" placeholder="0 */4 * * *">
+                <span class="field-hint">5-field cron: min hour dom mon dow</span>
+              </div>
+              <div class="field-group">
+                <label for="sync-log-file">Log file</label>
+                <input type="text" id="sync-log-file" placeholder="~/.cache/docsync/sync.log">
+              </div>
+              <div class="field-group checkbox-group">
+                <input type="checkbox" id="sync-on-change">
+                <label for="sync-on-change">Re-sync on file change</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Backup -->
+        <div class="cfg-section" id="backup">
+          <div class="cfg-section-header" onclick="toggleSection(this)">
+            <span>Global Backup</span>
+            <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="cfg-section-body">
+            <div class="field-grid">
+              <div class="field-group checkbox-group">
+                <input type="checkbox" id="backup-enabled" checked>
+                <label for="backup-enabled">Backups enabled</label>
+              </div>
+              <div class="field-group">
+                <label for="backup-base-dir">Base directory <span style="color:#ef4444">*</span></label>
+                <input type="text" id="backup-base-dir" placeholder="~/backups">
+              </div>
+              <div class="field-group">
+                <label for="backup-strategy">Strategy</label>
+                <select id="backup-strategy">
+                  <option value="incremental">Incremental</option>
+                  <option value="full">Full</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label for="backup-compression">Compression</label>
+                <select id="backup-compression">
+                  <option value="zstd">zstd (fast)</option>
+                  <option value="gzip">gzip</option>
+                  <option value="none">None</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label for="backup-schedule">Schedule (cron)</label>
+                <input type="text" id="backup-schedule" placeholder="0 2 * * *">
+              </div>
+              <div class="field-group">
+                <label for="backup-max-size">Max total size (GB)</label>
+                <input type="number" id="backup-max-size" min="1" placeholder="50">
+              </div>
+              <div class="field-group checkbox-group">
+                <input type="checkbox" id="backup-verify">
+                <label for="backup-verify">Verify after backup</label>
+              </div>
+            </div>
+            <div class="retention-row">
+              <span style="font-size:.8rem;font-weight:600;color:var(--text-muted,#64748b);margin-right:.25rem;">Retention:</span>
+              <div class="rfield">
+                <input type="number" id="retention-daily" min="0" placeholder="7">
+                <span>daily</span>
+              </div>
+              <div class="rfield">
+                <input type="number" id="retention-weekly" min="0" placeholder="4">
+                <span>weekly</span>
+              </div>
+              <div class="rfield">
+                <input type="number" id="retention-monthly" min="0" placeholder="6">
+                <span>monthly</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sources -->
+        <div class="cfg-section" id="sources">
+          <div class="cfg-section-header" onclick="toggleSection(this)">
+            <span>Sources</span>
+            <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="cfg-section-body">
+            <div class="sources-toolbar">
+              <button class="btn-run" onclick="openModal(-1)">+ Add Source</button>
+            </div>
+            <table class="sources-table" id="sources-table">
+              <thead>
+                <tr>
+                  <th>Name</th><th>Type</th><th>Path / Host</th><th>Category</th><th>Backup</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="sources-tbody">
+                <tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:1.5rem;">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- #tab-form -->
+
+      <!-- ── YAML tab ──────────────────────────────────────────────────── -->
+      <div id="tab-yaml" style="display:none;">
+        <div class="yaml-notice">
+          Editing raw YAML — changes here are independent of the form. Saving reloads the page from disk.
+        </div>
+        <textarea id="yaml-editor" spellcheck="false" placeholder="Loading…"></textarea>
+      </div>
+
+      <!-- Save bar -->
+      <div class="save-bar">
+        <button class="btn-save" id="btn-save">Save &amp; Validate</button>
+        <span id="dirty-indicator" style="font-size:.78rem;color:#f59e0b;display:none;">Unsaved changes</span>
+      </div>
+
+      <!-- Output log -->
+      <div id="output-panel">
+        <div class="panel-header">
+          <span>Validation Output</span>
+          <button id="btn-clear-log">Clear</button>
+        </div>
+        <div id="status-banner"></div>
+        <div id="log"></div>
+      </div>
+
+    </div><!-- .page-content -->
+
+    <footer class="site-footer">
+      <span class="footer-logo">Core<span class="accent">Doc</span></span>
+      <span>{{ site_title }} · Config Editor</span>
+    </footer>
+  </main>
+</div><!-- .layout -->
+
+<!-- ── Source modal ──────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <span id="modal-title">Add Source</span>
+      <button onclick="closeModal()" title="Close">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="field-grid">
+        <div class="field-group">
+          <label for="m-name">Name</label>
+          <input type="text" id="m-name" placeholder="my-project">
+        </div>
+        <div class="field-group">
+          <label for="m-type">Type</label>
+          <select id="m-type" onchange="updateModalType()">
+            <option value="local">Local</option>
+            <option value="remote">Remote (SSH)</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label for="m-path">Path <span style="color:#ef4444">*</span></label>
+          <input type="text" id="m-path" placeholder="~/projects/my-project">
+        </div>
+        <div class="field-group">
+          <label for="m-category">Category</label>
+          <input type="text" id="m-category" placeholder="General">
+        </div>
+        <div class="field-group">
+          <label for="m-icon">Icon</label>
+          <input type="text" id="m-icon" placeholder="code">
+          <span class="field-hint">server, code, terminal, database…</span>
+        </div>
+      </div>
+
+      <!-- Remote-only fields -->
+      <div class="modal-section-label remote-only" id="ssh-label">SSH Connection</div>
+      <div class="field-grid">
+        <div class="field-group remote-only" id="m-host-group">
+          <label for="m-host">Host <span style="color:#ef4444">*</span></label>
+          <input type="text" id="m-host" placeholder="192.168.1.10">
+        </div>
+        <div class="field-group remote-only" id="m-user-group">
+          <label for="m-user">User <span style="color:#ef4444">*</span></label>
+          <input type="text" id="m-user" placeholder="pi">
+        </div>
+        <div class="field-group remote-only" id="m-port-group">
+          <label for="m-port">Port</label>
+          <input type="number" id="m-port" value="22" min="1" max="65535">
+        </div>
+        <div class="field-group remote-only" id="m-key-group">
+          <label for="m-key">SSH Key</label>
+          <input type="text" id="m-key" placeholder="~/.ssh/id_rsa">
+        </div>
+      </div>
+
+      <!-- Patterns -->
+      <div class="modal-section-label">Patterns</div>
+      <div class="field-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="field-group">
+          <label for="m-include">Include (one glob per line)</label>
+          <textarea class="patterns-field" id="m-include" placeholder="**/*.md&#10;README.md"></textarea>
+        </div>
+        <div class="field-group">
+          <label for="m-exclude">Exclude (one glob per line)</label>
+          <textarea class="patterns-field" id="m-exclude" placeholder=".git/**&#10;__pycache__/**"></textarea>
+        </div>
+      </div>
+
+      <!-- Backup -->
+      <div class="modal-section-label">Backup</div>
+      <div class="field-grid">
+        <div class="field-group checkbox-group">
+          <input type="checkbox" id="m-bk-enabled" checked>
+          <label for="m-bk-enabled">Enable backup</label>
+        </div>
+        <div class="field-group checkbox-group">
+          <input type="checkbox" id="m-bk-include-all" checked>
+          <label for="m-bk-include-all">Include all files (not just docs)</label>
+        </div>
+        <div class="field-group">
+          <label for="m-bk-priority">Priority</label>
+          <select id="m-bk-priority">
+            <option value="high">High</option>
+            <option value="normal" selected>Normal</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <div class="field-group checkbox-group">
+          <input type="checkbox" id="m-bk-include-db">
+          <label for="m-bk-include-db">Include DB dump</label>
+        </div>
+      </div>
+
+    </div><!-- .modal-body -->
+    <div class="modal-footer">
+      <button class="btn-icon" onclick="closeModal()">Cancel</button>
+      <button class="btn-run" onclick="saveSource()">Save Source</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  // ── Dark mode ──────────────────────────────────────────────────────────────
+  var html = document.documentElement;
+  var toggle = document.getElementById('theme-toggle');
+  var moon = document.getElementById('theme-icon-moon');
+  var sun  = document.getElementById('theme-icon-sun');
+  function applyTheme(dark) {
+    html.setAttribute('data-theme', dark ? 'dark' : 'light');
+    moon.style.display = dark ? 'none' : '';
+    sun.style.display  = dark ? '' : 'none';
+  }
+  var saved = localStorage.getItem('docsync-theme');
+  applyTheme(saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches);
+  toggle.addEventListener('click', function () {
+    var isDark = html.getAttribute('data-theme') === 'dark';
+    applyTheme(!isDark);
+    localStorage.setItem('docsync-theme', !isDark ? 'dark' : 'light');
+  });
+
+  // ── Section collapse ───────────────────────────────────────────────────────
+  window.toggleSection = function (hdr) {
+    hdr.classList.toggle('collapsed');
+    hdr.nextElementSibling.classList.toggle('hidden');
+  };
+
+  // ── Tab switching ──────────────────────────────────────────────────────────
+  var activeTab = 'form';
+  window.switchTab = function (tab) {
+    activeTab = tab;
+    document.getElementById('tab-form').style.display = tab === 'form' ? '' : 'none';
+    document.getElementById('tab-yaml').style.display = tab === 'yaml' ? '' : 'none';
+    document.getElementById('tab-form-btn').classList.toggle('active', tab === 'form');
+    document.getElementById('tab-yaml-btn').classList.toggle('active', tab === 'yaml');
+    if (tab === 'yaml') reloadYaml();
+  };
+
+  function reloadYaml() {
+    fetch('/api/config')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        document.getElementById('yaml-editor').value = d.raw_yaml || '';
+      });
+  }
+
+  // ── Log helpers ────────────────────────────────────────────────────────────
+  var log = document.getElementById('log');
+  var banner = document.getElementById('status-banner');
+
+  function clearLog() {
+    log.textContent = '';
+    banner.className = '';
+    banner.style.display = 'none';
+    banner.textContent = '';
+  }
+
+  function appendLine(text) {
+    var ts = new Date().toLocaleTimeString('en-GB', {hour12: false});
+    var div = document.createElement('div');
+    div.innerHTML = '<span class="ts">[' + ts + ']</span>' + esc(text);
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function esc(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function setBanner(code) {
+    if (code === 0) {
+      banner.className = 'ok'; banner.textContent = '✓ Saved and validated successfully';
+    } else {
+      banner.className = 'err'; banner.textContent = '✗ Validation failed (exit ' + code + ')';
+    }
+  }
+
+  document.getElementById('btn-clear-log').addEventListener('click', clearLog);
+
+  // ── SSE stream helper (POST) ───────────────────────────────────────────────
+  var saveBtn = document.getElementById('btn-save');
+
+  function streamSave(url, body, contentType) {
+    clearLog();
+    saveBtn.disabled = true;
+    var opts = {
+      method: 'POST',
+      body: body,
+      headers: {'Content-Type': contentType},
+    };
+    fetch(url, opts).then(function (resp) {
+      if (!resp.ok) {
+        resp.json().then(function (e) {
+          appendLine('Error: ' + (e.error || resp.statusText));
+          saveBtn.disabled = false;
+        });
+        return;
+      }
+      var reader = resp.body.getReader();
+      var dec = new TextDecoder();
+      var buf = '';
+      function pump() {
+        reader.read().then(function (r) {
+          if (r.done) { saveBtn.disabled = false; return; }
+          buf += dec.decode(r.value, {stream: true});
+          var parts = buf.split('\n\n');
+          buf = parts.pop();
+          parts.forEach(function (chunk) {
+            chunk.split('\n').forEach(function (line) {
+              if (!line.startsWith('data: ')) return;
+              var text = line.slice(6);
+              var m = text.match(/^\[exit:(\d+)\]$/);
+              if (m) {
+                setBanner(parseInt(m[1], 10));
+                saveBtn.disabled = false;
+                document.getElementById('dirty-indicator').style.display = 'none';
+              } else {
+                appendLine(text);
+              }
+            });
+          });
+          pump();
+        });
+      }
+      pump();
+    }).catch(function (err) {
+      appendLine('Request failed: ' + err);
+      saveBtn.disabled = false;
+    });
+  }
+
+  // ── Save button dispatch ───────────────────────────────────────────────────
+  saveBtn.addEventListener('click', function () {
+    if (activeTab === 'yaml') {
+      var yaml = document.getElementById('yaml-editor').value;
+      streamSave('/api/config/raw', yaml, 'text/plain');
+    } else {
+      var data = collectFormData();
+      streamSave('/api/config/structured', JSON.stringify(data), 'application/json');
+    }
+  });
+
+  // ── Dirty indicator ────────────────────────────────────────────────────────
+  var dirty = document.getElementById('dirty-indicator');
+  document.querySelectorAll('input, select, textarea').forEach(function (el) {
+    if (el.id !== 'yaml-editor') {
+      el.addEventListener('change', function () { dirty.style.display = ''; });
+      el.addEventListener('input',  function () { dirty.style.display = ''; });
+    }
+  });
+
+  // ── Sources in-memory state ────────────────────────────────────────────────
+  var sourcesData = [];
+  var editingIndex = -1;
+
+  function renderSourcesTable() {
+    var tbody = document.getElementById('sources-tbody');
+    if (!sourcesData.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:1.5rem;">No sources. Click + Add Source.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = '';
+    sourcesData.forEach(function (src, i) {
+      var bkOn = src.backup && src.backup.enabled !== false;
+      var pathOrHost = src.type === 'remote' ? (src.host || '') : (src.path || '');
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td>' + esc(src.name || '') + '</td>' +
+        '<td><span class="badge-type badge-' + esc(src.type || 'local') + '">' + esc(src.type || 'local') + '</span></td>' +
+        '<td style="font-family:monospace;font-size:.78rem;">' + esc(pathOrHost) + '</td>' +
+        '<td>' + esc(src.category || '') + '</td>' +
+        '<td><span class="badge-bk-' + (bkOn ? 'on' : 'off') + '">' + (bkOn ? '✓ on' : 'off') + '</span></td>' +
+        '<td style="white-space:nowrap;">' +
+          '<button class="btn-icon" onclick="openModal(' + i + ')">Edit</button> ' +
+          '<button class="btn-icon danger" onclick="deleteSource(' + i + ')">✕</button>' +
+        '</td>';
+      tbody.appendChild(tr);
+    });
+  }
+
+  window.deleteSource = function (i) {
+    if (!confirm('Remove source "' + (sourcesData[i].name || i) + '"?')) return;
+    sourcesData.splice(i, 1);
+    renderSourcesTable();
+    dirty.style.display = '';
+  };
+
+  // ── Modal logic ────────────────────────────────────────────────────────────
+  window.openModal = function (idx) {
+    editingIndex = idx;
+    document.getElementById('modal-title').textContent = idx === -1 ? 'Add Source' : 'Edit Source';
+    var src = idx === -1 ? {} : sourcesData[idx];
+
+    document.getElementById('m-name').value     = src.name     || '';
+    document.getElementById('m-type').value     = src.type     || 'local';
+    document.getElementById('m-path').value     = src.path     || '';
+    document.getElementById('m-category').value = src.category || '';
+    document.getElementById('m-icon').value     = src.icon     || '';
+    document.getElementById('m-host').value     = src.host     || '';
+    document.getElementById('m-user').value     = src.user     || '';
+    document.getElementById('m-port').value     = src.port     || 22;
+    document.getElementById('m-key').value      = src.key      || '';
+
+    var inc = Array.isArray(src.include) ? src.include.join('\n') : (src.include || '');
+    var exc = Array.isArray(src.exclude) ? src.exclude.join('\n') : (src.exclude || '');
+    document.getElementById('m-include').value = inc;
+    document.getElementById('m-exclude').value = exc;
+
+    var bk = src.backup || {};
+    document.getElementById('m-bk-enabled').checked     = bk.enabled !== false;
+    document.getElementById('m-bk-include-all').checked  = bk.include_all !== false;
+    document.getElementById('m-bk-priority').value       = bk.priority || 'normal';
+    document.getElementById('m-bk-include-db').checked   = !!bk.include_db;
+
+    updateModalType();
+    document.getElementById('modal-overlay').classList.add('open');
+  };
+
+  window.closeModal = function () {
+    document.getElementById('modal-overlay').classList.remove('open');
+  };
+
+  window.updateModalType = function () {
+    var isRemote = document.getElementById('m-type').value === 'remote';
+    document.querySelectorAll('.remote-only').forEach(function (el) {
+      el.classList.toggle('show', isRemote);
+    });
+  };
+
+  window.saveSource = function () {
+    var name = document.getElementById('m-name').value.trim();
+    if (!name) { alert('Source name is required.'); return; }
+    var path = document.getElementById('m-path').value.trim();
+    if (!path) { alert('Path is required.'); return; }
+    var type = document.getElementById('m-type').value;
+    if (type === 'remote') {
+      if (!document.getElementById('m-host').value.trim()) { alert('Host is required for remote sources.'); return; }
+      if (!document.getElementById('m-user').value.trim()) { alert('User is required for remote sources.'); return; }
+    }
+
+    function splitLines(str) {
+      return str.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+    }
+
+    var src = {
+      name: name,
+      type: type,
+      path: path,
+    };
+    var cat = document.getElementById('m-category').value.trim();
+    if (cat) src.category = cat;
+    var icon = document.getElementById('m-icon').value.trim();
+    if (icon) src.icon = icon;
+
+    if (type === 'remote') {
+      src.host = document.getElementById('m-host').value.trim();
+      src.user = document.getElementById('m-user').value.trim();
+      var port = parseInt(document.getElementById('m-port').value);
+      if (port && port !== 22) src.port = port;
+      var key = document.getElementById('m-key').value.trim();
+      if (key) src.key = key;
+    }
+
+    var inc = splitLines(document.getElementById('m-include').value);
+    var exc = splitLines(document.getElementById('m-exclude').value);
+    if (inc.length) src.include = inc;
+    if (exc.length) src.exclude = exc;
+
+    src.backup = {
+      enabled:     document.getElementById('m-bk-enabled').checked,
+      include_all: document.getElementById('m-bk-include-all').checked,
+      priority:    document.getElementById('m-bk-priority').value,
+    };
+    if (document.getElementById('m-bk-include-db').checked) {
+      src.backup.include_db = true;
+    }
+
+    if (editingIndex === -1) {
+      sourcesData.push(src);
+    } else {
+      sourcesData[editingIndex] = src;
+    }
+    renderSourcesTable();
+    closeModal();
+    dirty.style.display = '';
+  };
+
+  // Close modal on overlay click
+  document.getElementById('modal-overlay').addEventListener('click', function (e) {
+    if (e.target === this) closeModal();
+  });
+
+  // ── Form data collector ────────────────────────────────────────────────────
+  function collectFormData() {
+    var data = {};
+
+    // Site
+    var site = {};
+    var t = document.getElementById('site-title').value.trim();
+    var o = document.getElementById('site-output-dir').value.trim();
+    var b = document.getElementById('site-base-url').value.trim();
+    var th = document.getElementById('site-theme').value.trim();
+    if (t) site.title = t;
+    if (o) site.output_dir = o;
+    if (b) site.base_url = b;
+    if (th) site.theme = th;
+    if (Object.keys(site).length) data.site = site;
+
+    // Sync
+    var sync = {};
+    var sc = document.getElementById('sync-schedule').value.trim();
+    var lf = document.getElementById('sync-log-file').value.trim();
+    if (sc) sync.schedule = sc;
+    if (lf) sync.log_file = lf;
+    if (document.getElementById('sync-on-change').checked) sync.on_change = true;
+    if (Object.keys(sync).length) data.sync = sync;
+
+    // Backup
+    var backup = {
+      enabled:    document.getElementById('backup-enabled').checked,
+      strategy:   document.getElementById('backup-strategy').value,
+      compression: document.getElementById('backup-compression').value,
+    };
+    var bd = document.getElementById('backup-base-dir').value.trim();
+    if (bd) backup.base_dir = bd;
+    var bsc = document.getElementById('backup-schedule').value.trim();
+    if (bsc) backup.schedule = bsc;
+    if (document.getElementById('backup-verify').checked) backup.verify_after_backup = true;
+    var ms = document.getElementById('backup-max-size').value;
+    if (ms) backup.max_total_size_gb = parseInt(ms);
+    var rd = document.getElementById('retention-daily').value;
+    var rw = document.getElementById('retention-weekly').value;
+    var rm = document.getElementById('retention-monthly').value;
+    var retention = {};
+    if (rd !== '') retention.daily = parseInt(rd);
+    if (rw !== '') retention.weekly = parseInt(rw);
+    if (rm !== '') retention.monthly = parseInt(rm);
+    if (Object.keys(retention).length) backup.retention = retention;
+    data.backup = backup;
+
+    // Sources
+    if (sourcesData.length) data.sources = sourcesData;
+
+    return data;
+  }
+
+  // ── Populate form from API ─────────────────────────────────────────────────
+  function populateForm(cfg) {
+    var site = cfg.site || {};
+    document.getElementById('site-title').value      = site.title      || '';
+    document.getElementById('site-output-dir').value = site.output_dir || '';
+    document.getElementById('site-base-url').value   = site.base_url   || '';
+    document.getElementById('site-theme').value      = site.theme      || '';
+
+    var sync = cfg.sync || {};
+    document.getElementById('sync-schedule').value  = sync.schedule  || '';
+    document.getElementById('sync-log-file').value  = sync.log_file  || '';
+    document.getElementById('sync-on-change').checked = !!sync.on_change;
+
+    var bk = cfg.backup || {};
+    document.getElementById('backup-enabled').checked   = bk.enabled !== false;
+    document.getElementById('backup-base-dir').value    = bk.base_dir    || '';
+    document.getElementById('backup-strategy').value    = bk.strategy    || 'incremental';
+    document.getElementById('backup-compression').value = bk.compression || 'zstd';
+    document.getElementById('backup-schedule').value    = bk.schedule    || '';
+    document.getElementById('backup-verify').checked    = !!bk.verify_after_backup;
+    document.getElementById('backup-max-size').value    = bk.max_total_size_gb || '';
+    var ret = bk.retention || {};
+    document.getElementById('retention-daily').value   = ret.daily   !== undefined ? ret.daily   : '';
+    document.getElementById('retention-weekly').value  = ret.weekly  !== undefined ? ret.weekly  : '';
+    document.getElementById('retention-monthly').value = ret.monthly !== undefined ? ret.monthly : '';
+
+    sourcesData = Array.isArray(cfg.sources) ? JSON.parse(JSON.stringify(cfg.sources)) : [];
+    renderSourcesTable();
+  }
+
+  // ── Initial load ───────────────────────────────────────────────────────────
+  fetch('/api/config')
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      document.getElementById('config-path-label').textContent = d.config_path || '';
+      document.getElementById('yaml-editor').value = d.raw_yaml || '';
+      populateForm(d.config || {});
+    })
+    .catch(function (err) {
+      document.getElementById('config-path-label').textContent = 'Error loading config: ' + err;
+    });
+
+})();
+</script>
+</body>
+</html>

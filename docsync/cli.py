@@ -261,10 +261,7 @@ def status(ctx: click.Context) -> None:
 @click.option("--port", "-p", default=8484, show_default=True, help="Port to serve on.")
 @click.pass_context
 def serve(ctx: click.Context, port: int) -> None:
-    """Start a dev server for the generated site."""
-    import http.server
-    import functools
-
+    """Start a dev server for the generated site (with admin control panel)."""
     config_path: Path | None = ctx.obj.get("config_path")
     try:
         config, _ = load_and_validate(config_path)
@@ -279,17 +276,15 @@ def serve(ctx: click.Context, port: int) -> None:
         _echo_warn("Run `docsync sync` first to generate the site.")
         sys.exit(1)
 
-    handler = functools.partial(
-        http.server.SimpleHTTPRequestHandler,
-        directory=str(output_path),
-    )
+    from .web import create_app
+    app = create_app(config, output_path, config_path)
     click.echo(f"Serving {output_path} at http://localhost:{port}")
+    click.echo(f"Admin panel:  http://localhost:{port}/admin")
     click.echo("Press Ctrl+C to stop.")
-    with http.server.HTTPServer(("", port), handler) as httpd:
-        try:
-            httpd.serve_forever()
-        except KeyboardInterrupt:
-            click.echo("\nServer stopped.")
+    try:
+        app.run(host="0.0.0.0", port=port, debug=False)
+    except KeyboardInterrupt:
+        click.echo("\nServer stopped.")
 
 
 # ── docsync init ──────────────────────────────────────────────────────────────

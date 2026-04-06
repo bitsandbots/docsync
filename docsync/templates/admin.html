@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control Panel — {{ site_title }}</title>
+  <link rel="stylesheet" href="/assets/style.css">
+  <style>
+    .admin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    .admin-card {
+      background: var(--card-bg, #fff);
+      border: 1px solid var(--border, #e2e8f0);
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+    }
+    .admin-card h3 {
+      margin: 0 0 1rem;
+      font-size: .9rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-muted, #64748b);
+      font-weight: 600;
+    }
+    .admin-card .field-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      align-items: center;
+      margin-bottom: .75rem;
+    }
+    .admin-card select {
+      flex: 1;
+      min-width: 120px;
+      padding: .4rem .6rem;
+      border: 1px solid var(--border, #cbd5e1);
+      border-radius: 5px;
+      background: var(--input-bg, #f8fafc);
+      color: var(--text, #1e293b);
+      font-size: .85rem;
+    }
+    .admin-card label.checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+      font-size: .85rem;
+      cursor: pointer;
+    }
+    .btn-run {
+      padding: .45rem 1rem;
+      border: none;
+      border-radius: 5px;
+      background: var(--accent, #3b82f6);
+      color: #fff;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn-run:hover { opacity: .85; }
+    .btn-run:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-secondary {
+      background: var(--sidebar-bg, #1e293b);
+    }
+
+    /* Output panel */
+    #output-panel {
+      border: 1px solid var(--border, #e2e8f0);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    #output-panel .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .6rem 1rem;
+      background: var(--sidebar-bg, #1e293b);
+      color: var(--sidebar-text, #e2e8f0);
+      font-size: .8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    #output-panel .panel-header button {
+      background: none;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      opacity: .6;
+      font-size: .75rem;
+      padding: 0 .25rem;
+    }
+    #output-panel .panel-header button:hover { opacity: 1; }
+    #log {
+      background: #0a0e1a;
+      color: #c8e6a0;
+      font-family: 'IBM Plex Mono', 'JetBrains Mono', monospace;
+      font-size: .78rem;
+      line-height: 1.55;
+      padding: 1rem;
+      min-height: 220px;
+      max-height: 420px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    #log .ts { color: #4a5568; margin-right: .4rem; }
+    #log .exit-ok  { color: #48bb78; font-weight: bold; }
+    #log .exit-err { color: #f56565; font-weight: bold; }
+    #status-banner {
+      display: none;
+      padding: .6rem 1rem;
+      font-size: .85rem;
+      font-weight: 600;
+    }
+    #status-banner.ok  { background: #c6f6d5; color: #276749; display: block; }
+    #status-banner.err { background: #fed7d7; color: #9b2c2c; display: block; }
+
+    /* Status table */
+    #status-output {
+      display: none;
+      margin-top: 1rem;
+      border: 1px solid var(--border, #e2e8f0);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    #status-output table { width: 100%; border-collapse: collapse; }
+    #status-output td, #status-output th {
+      padding: .45rem .75rem;
+      font-size: .82rem;
+      border-bottom: 1px solid var(--border, #e2e8f0);
+      text-align: left;
+    }
+    #status-output th { background: var(--sidebar-bg, #1e293b); color: #e2e8f0; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="/index.html" class="site-logo">Core<span class="accent">Doc</span></a>
+  <nav class="header-actions" style="margin-right:auto;margin-left:1.5rem;display:flex;gap:.25rem;">
+    <a href="/index.html" class="header-badge">Dashboard</a>
+    <a href="/search.html" class="header-badge">Search</a>
+    <a href="/updates.html" class="header-badge">Updates</a>
+    <a href="/backups.html" class="header-badge">Backups</a>
+    <a href="/admin" class="header-badge" style="background:var(--accent,#3b82f6);color:#fff;">Control</a>
+    <a href="/admin/config" class="header-badge">Config</a>
+  </nav>
+  <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">
+    <svg id="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+    <svg id="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+      <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/>
+      <line x1="12" y1="21" x2="12" y2="23"/>
+    </svg>
+  </button>
+</header>
+
+<div class="layout">
+
+  <aside class="sidebar" id="sidebar">
+    <nav>
+      <span class="sidebar-label">Control Panel</span>
+      <a href="#sync"    class="sidebar-link">Sync</a>
+      <a href="#backup"  class="sidebar-link">Backup</a>
+      <a href="#restore" class="sidebar-link">Restore</a>
+      <a href="#check"   class="sidebar-link">Check / Status</a>
+      <a href="#output-panel" class="sidebar-link">Output Log</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="page-content">
+      <h1 style="margin-bottom:1.5rem;">Control Panel</h1>
+
+      <div class="admin-grid">
+
+        <!-- Sync -->
+        <div class="admin-card" id="sync">
+          <h3>Sync</h3>
+          <div class="field-row">
+            <select id="sync-source">
+              <option value="">All sources</option>
+              {% for s in sources %}
+              <option value="{{ s }}">{{ s }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button class="btn-run" id="btn-sync">Run Sync</button>
+        </div>
+
+        <!-- Backup -->
+        <div class="admin-card" id="backup">
+          <h3>Backup</h3>
+          <div class="field-row">
+            <select id="backup-source">
+              <option value="">All sources</option>
+              {% for s in sources %}
+              <option value="{{ s }}">{{ s }}</option>
+              {% endfor %}
+            </select>
+            <label class="checkbox-label">
+              <input type="checkbox" id="backup-full"> Full
+            </label>
+          </div>
+          <button class="btn-run" id="btn-backup">Run Backup</button>
+        </div>
+
+        <!-- Restore -->
+        <div class="admin-card" id="restore">
+          <h3>Restore</h3>
+          <div class="field-row">
+            <select id="restore-source">
+              <option value="">Select source…</option>
+              {% for s in sources %}
+              <option value="{{ s }}">{{ s }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field-row">
+            <select id="restore-snapshot" disabled>
+              <option value="">Select snapshot…</option>
+            </select>
+          </div>
+          <div class="field-row" style="margin-bottom:.5rem;">
+            <input type="text" id="restore-dest" placeholder="Restore path (optional)"
+              style="flex:1;padding:.4rem .6rem;border:1px solid var(--border,#cbd5e1);border-radius:5px;background:var(--input-bg,#f8fafc);color:var(--text,#1e293b);font-size:.85rem;">
+          </div>
+          <button class="btn-run" id="btn-restore" disabled>Restore</button>
+        </div>
+
+        <!-- Check / Status -->
+        <div class="admin-card" id="check">
+          <h3>Check / Status</h3>
+          <div class="field-row" style="gap:.5rem;">
+            <button class="btn-run" id="btn-check">Run Check</button>
+            <button class="btn-run btn-secondary" id="btn-status">Show Status</button>
+          </div>
+          <div id="status-output">
+            <table>
+              <thead><tr><th>Key</th><th>Value</th></tr></thead>
+              <tbody id="status-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- .admin-grid -->
+
+      <!-- Output log -->
+      <div id="output-panel">
+        <div class="panel-header">
+          <span>Output</span>
+          <button id="btn-clear-log">Clear</button>
+        </div>
+        <div id="status-banner"></div>
+        <div id="log"></div>
+      </div>
+
+    </div><!-- .page-content -->
+
+    <footer class="site-footer">
+      <span class="footer-logo">Core<span class="accent">Doc</span></span>
+      <span>{{ site_title }} · Control Panel</span>
+    </footer>
+  </main>
+
+</div><!-- .layout -->
+
+<script>
+(function () {
+  // ── Dark mode ──────────────────────────────────────────────────────────────
+  var html = document.documentElement;
+  var toggle = document.getElementById('theme-toggle');
+  var moon = document.getElementById('theme-icon-moon');
+  var sun  = document.getElementById('theme-icon-sun');
+  function applyTheme(dark) {
+    html.setAttribute('data-theme', dark ? 'dark' : 'light');
+    moon.style.display = dark ? 'none' : '';
+    sun.style.display  = dark ? '' : 'none';
+  }
+  var saved = localStorage.getItem('docsync-theme');
+  var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(saved ? saved === 'dark' : prefersDark);
+  toggle.addEventListener('click', function () {
+    var isDark = html.getAttribute('data-theme') === 'dark';
+    applyTheme(!isDark);
+    localStorage.setItem('docsync-theme', !isDark ? 'dark' : 'light');
+  });
+
+  // ── Log helpers ────────────────────────────────────────────────────────────
+  var log = document.getElementById('log');
+  var banner = document.getElementById('status-banner');
+
+  function clearLog() {
+    log.textContent = '';
+    banner.className = '';
+    banner.style.display = 'none';
+    banner.textContent = '';
+  }
+
+  function appendLine(text) {
+    var ts = new Date().toLocaleTimeString('en-GB', {hour12: false});
+    var line = document.createElement('div');
+    line.innerHTML = '<span class="ts">[' + ts + ']</span>' + escapeHtml(text);
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function setBanner(exitCode) {
+    if (exitCode === 0) {
+      banner.className = 'ok';
+      banner.textContent = '✓ Completed successfully';
+    } else {
+      banner.className = 'err';
+      banner.textContent = '✗ Exited with code ' + exitCode;
+    }
+  }
+
+  document.getElementById('btn-clear-log').addEventListener('click', clearLog);
+
+  // ── SSE streaming for POST endpoints ──────────────────────────────────────
+  var _activeButtons = [];
+
+  function disableButtons(btns) {
+    _activeButtons = btns;
+    btns.forEach(function (b) { b.disabled = true; });
+  }
+
+  function enableButtons() {
+    _activeButtons.forEach(function (b) { b.disabled = false; });
+    _activeButtons = [];
+  }
+
+  function streamPost(url, body, btns) {
+    clearLog();
+    disableButtons(btns);
+    fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    }).then(function (resp) {
+      if (!resp.ok) {
+        resp.text().then(function (t) { appendLine('Error: ' + t); enableButtons(); });
+        return;
+      }
+      var reader = resp.body.getReader();
+      var decoder = new TextDecoder();
+      var buf = '';
+      function pump() {
+        reader.read().then(function (result) {
+          if (result.done) { enableButtons(); return; }
+          buf += decoder.decode(result.value, {stream: true});
+          var parts = buf.split('\n\n');
+          buf = parts.pop();
+          parts.forEach(function (chunk) {
+            chunk.split('\n').forEach(function (line) {
+              if (!line.startsWith('data: ')) return;
+              var text = line.slice(6);
+              var m = text.match(/^\[exit:(\d+)\]$/);
+              if (m) {
+                setBanner(parseInt(m[1], 10));
+                enableButtons();
+              } else {
+                appendLine(text);
+              }
+            });
+          });
+          pump();
+        });
+      }
+      pump();
+    }).catch(function (err) {
+      appendLine('Request failed: ' + err);
+      enableButtons();
+    });
+  }
+
+  function streamGet(url, btns) {
+    clearLog();
+    disableButtons(btns);
+    fetch(url).then(function (resp) {
+      var reader = resp.body.getReader();
+      var decoder = new TextDecoder();
+      var buf = '';
+      function pump() {
+        reader.read().then(function (result) {
+          if (result.done) { enableButtons(); return; }
+          buf += decoder.decode(result.value, {stream: true});
+          var parts = buf.split('\n\n');
+          buf = parts.pop();
+          parts.forEach(function (chunk) {
+            chunk.split('\n').forEach(function (line) {
+              if (!line.startsWith('data: ')) return;
+              var text = line.slice(6);
+              var m = text.match(/^\[exit:(\d+)\]$/);
+              if (m) {
+                setBanner(parseInt(m[1], 10));
+                enableButtons();
+              } else {
+                appendLine(text);
+              }
+            });
+          });
+          pump();
+        });
+      }
+      pump();
+    }).catch(function (err) {
+      appendLine('Request failed: ' + err);
+      enableButtons();
+    });
+  }
+
+  // ── Sync ───────────────────────────────────────────────────────────────────
+  document.getElementById('btn-sync').addEventListener('click', function () {
+    var src = document.getElementById('sync-source').value;
+    streamPost('/api/sync', src ? {source: src} : {}, [this]);
+  });
+
+  // ── Backup run ─────────────────────────────────────────────────────────────
+  document.getElementById('btn-backup').addEventListener('click', function () {
+    var src  = document.getElementById('backup-source').value;
+    var full = document.getElementById('backup-full').checked;
+    var body = {};
+    if (src)  body.source = src;
+    if (full) body.full = true;
+    streamPost('/api/backup/run', body, [this]);
+  });
+
+  // ── Restore: populate snapshots when source changes ────────────────────────
+  var restoreSource   = document.getElementById('restore-source');
+  var restoreSnapshot = document.getElementById('restore-snapshot');
+  var btnRestore      = document.getElementById('btn-restore');
+
+  restoreSource.addEventListener('change', function () {
+    var src = this.value;
+    restoreSnapshot.innerHTML = '<option value="">Loading…</option>';
+    restoreSnapshot.disabled = true;
+    btnRestore.disabled = true;
+    if (!src) return;
+
+    fetch('/api/backup/snapshots?source=' + encodeURIComponent(src))
+      .then(function (r) { return r.json(); })
+      .then(function (snaps) {
+        restoreSnapshot.innerHTML = '<option value="">Select snapshot…</option>';
+        snaps.forEach(function (s) {
+          var opt = document.createElement('option');
+          opt.value = s.timestamp;
+          opt.textContent = s.ts_human + '  [' + s.status + ']  ' + s.size_human;
+          restoreSnapshot.appendChild(opt);
+        });
+        restoreSnapshot.disabled = snaps.length === 0;
+        restoreSnapshot.dispatchEvent(new Event('change'));
+      })
+      .catch(function () {
+        restoreSnapshot.innerHTML = '<option value="">Error loading snapshots</option>';
+      });
+  });
+
+  restoreSnapshot.addEventListener('change', function () {
+    btnRestore.disabled = !this.value;
+  });
+
+  btnRestore.addEventListener('click', function () {
+    var src  = restoreSource.value;
+    var snap = restoreSnapshot.value;
+    var dest = document.getElementById('restore-dest').value.trim();
+    if (!src || !snap) return;
+    var body = {source: src, snapshot: snap};
+    if (dest) body.dest = dest;
+    streamPost('/api/backup/restore', body, [this]);
+  });
+
+  // ── Check ──────────────────────────────────────────────────────────────────
+  document.getElementById('btn-check').addEventListener('click', function () {
+    streamGet('/api/check', [this]);
+  });
+
+  // ── Status (JSON) ──────────────────────────────────────────────────────────
+  document.getElementById('btn-status').addEventListener('click', function () {
+    var btn = this;
+    btn.disabled = true;
+    var out = document.getElementById('status-output');
+    var tbody = document.getElementById('status-tbody');
+    out.style.display = 'none';
+
+    fetch('/api/status')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        tbody.innerHTML = '';
+        function row(k, v) {
+          var tr = document.createElement('tr');
+          tr.innerHTML = '<td>' + escapeHtml(k) + '</td><td>' + escapeHtml(String(v)) + '</td>';
+          tbody.appendChild(tr);
+        }
+        row('Last sync', data.last_sync || 'Never');
+        row('Total files tracked', data.total_files);
+        Object.keys(data.sources || {}).sort().forEach(function (s) {
+          row('  ' + s, data.sources[s] + ' file(s)');
+        });
+        out.style.display = 'block';
+        btn.disabled = false;
+      })
+      .catch(function (err) {
+        appendLine('Status fetch failed: ' + err);
+        btn.disabled = false;
+      });
+  });
+
+})();
+</script>
+</body>
+</html>
