@@ -21,9 +21,12 @@ def create_app(config: dict, output_dir: Path, config_path: Path | None = None) 
     app.config["OUTPUT_DIR"] = str(output_dir)
     app.config["DOCSYNC_CONFIG"] = str(config_path) if config_path else None
 
-    sources = [s["name"] for s in config.get("sources", [])]
-    site_title = config.get("site", {}).get("title", "DocSync")
-    base_dir_str = config.get("backup", {}).get("base_dir")
+    # Mutable state so /api/reload can refresh without restarting.
+    _state = {
+        "sources":      [s["name"] for s in config.get("sources", [])],
+        "site_title":   config.get("site", {}).get("title", "DocSync"),
+        "base_dir_str": config.get("backup", {}).get("base_dir"),
+    }
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -69,8 +72,8 @@ def create_app(config: dict, output_dir: Path, config_path: Path | None = None) 
     def admin():
         return render_template(
             "admin.html",
-            sources=sources,
-            site_title=site_title,
+            sources=_state["sources"],
+            site_title=_state["site_title"],
         )
 
     # ── API: sync ─────────────────────────────────────────────────────────────
@@ -156,6 +159,7 @@ def create_app(config: dict, output_dir: Path, config_path: Path | None = None) 
     @app.route("/api/backup/snapshots")
     def api_backup_snapshots():
         source = request.args.get("source", "")
+        base_dir_str = _state["base_dir_str"]
         if not source or not base_dir_str:
             return jsonify([])
 
@@ -188,7 +192,7 @@ def create_app(config: dict, output_dir: Path, config_path: Path | None = None) 
 
     @app.route("/admin/config")
     def admin_config():
-        return render_template("config.html", site_title=site_title)
+        return render_template("config.html", site_title=_state["site_title"])
 
     @app.route("/api/config")
     def api_config_get():
@@ -261,6 +265,33 @@ def create_app(config: dict, output_dir: Path, config_path: Path | None = None) 
             mimetype="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
+
+    # ── API: reload config ────────────────────────────────────────────────────
+
+    @app.route("/api/reload", methods=["POST"])
+    def api_reload():
+        """Re-read config from disk and refresh in-memory state."""
+        import yaml
+
+        cfg_path = _resolved_config_path()
+        try:
+            new_cfg = yaml.safe_load(cfg_path.read_text()) or {}
+        except FileNotFoundError:
+            return jsonify({"error": f"Config file not found: {cfg_path}"}), 404
+        except yaml.YAMLError as exc:
+            return jsonify({"error": f"YAML parse error: {exc}"}), 400
+        except OSError as exc:
+            return jsonify({"error": str(exc)}), 500
+
+        _state["sources"]      = [s["name"] for s in new_cfg.get("sources", [])]
+        _state["site_title"]   = new_cfg.get("site", {}).get("title", "DocSync")
+        _state["base_dir_str"] = new_cfg.get("backup", {}).get("base_dir")
+
+        return jsonify({
+            "ok": True,
+            "sources": _state["sources"],
+            "site_title": _state["site_title"],
+        })
 
     return app
 

@@ -367,10 +367,12 @@
   <aside class="sidebar" id="sidebar">
     <nav>
       <span class="sidebar-label">Config Editor</span>
-      <a href="#site"    class="sidebar-link">Site</a>
-      <a href="#sync"    class="sidebar-link">Sync</a>
-      <a href="#backup"  class="sidebar-link">Backup</a>
-      <a href="#sources" class="sidebar-link">Sources</a>
+      <a href="#site"      class="sidebar-link">Site</a>
+      <a href="#sync"      class="sidebar-link">Sync</a>
+      <a href="#backup"    class="sidebar-link">Backup</a>
+      <a href="#search"    class="sidebar-link">Search</a>
+      <a href="#code-docs" class="sidebar-link">Code Docs</a>
+      <a href="#sources"   class="sidebar-link">Sources</a>
       <a href="#output-panel" class="sidebar-link">Output Log</a>
     </nav>
   </aside>
@@ -504,6 +506,50 @@
                 <span>monthly</span>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- Search -->
+        <div class="cfg-section" id="search">
+          <div class="cfg-section-header" onclick="toggleSection(this)">
+            <span>Search</span>
+            <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="cfg-section-body">
+            <div class="field-grid">
+              <div class="field-group">
+                <label for="search-engine">Engine</label>
+                <select id="search-engine">
+                  <option value="lunr">lunr (client-side)</option>
+                </select>
+                <span class="field-hint">Only lunr is currently supported</span>
+              </div>
+              <div class="field-group checkbox-group">
+                <input type="checkbox" id="search-index-code-docs">
+                <label for="search-index-code-docs">Index code docs</label>
+              </div>
+              <div class="field-group checkbox-group">
+                <input type="checkbox" id="search-index-config-files">
+                <label for="search-index-config-files">Index config files</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Code Docs -->
+        <div class="cfg-section" id="code-docs">
+          <div class="cfg-section-header" onclick="toggleSection(this)">
+            <span>Code Docs</span>
+            <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="cfg-section-body">
+            <div class="field-grid">
+              <div class="field-group checkbox-group">
+                <input type="checkbox" id="code-docs-enabled">
+                <label for="code-docs-enabled">Enable code doc extraction</label>
+              </div>
+            </div>
+            <p class="field-hint" style="margin-top:.75rem;">Per-language pattern and file glob settings are only editable via the YAML tab.</p>
           </div>
         </div>
 
@@ -1007,6 +1053,18 @@
     if (Object.keys(retention).length) backup.retention = retention;
     data.backup = backup;
 
+    // Search
+    var search = {};
+    search.engine = document.getElementById('search-engine').value;
+    if (document.getElementById('search-index-code-docs').checked) search.index_code_docs = true;
+    if (document.getElementById('search-index-config-files').checked) search.index_config_files = true;
+    if (Object.keys(search).length) data.search = search;
+
+    // Code docs
+    var codeDocs = {};
+    codeDocs.enabled = document.getElementById('code-docs-enabled').checked;
+    data.code_docs = codeDocs;
+
     // Sources
     if (sourcesData.length) data.sources = sourcesData;
 
@@ -1038,6 +1096,14 @@
     document.getElementById('retention-daily').value   = ret.daily   !== undefined ? ret.daily   : '';
     document.getElementById('retention-weekly').value  = ret.weekly  !== undefined ? ret.weekly  : '';
     document.getElementById('retention-monthly').value = ret.monthly !== undefined ? ret.monthly : '';
+
+    var srch = cfg.search || {};
+    document.getElementById('search-engine').value                  = srch.engine || 'lunr';
+    document.getElementById('search-index-code-docs').checked       = !!srch.index_code_docs;
+    document.getElementById('search-index-config-files').checked    = !!srch.index_config_files;
+
+    var cd = cfg.code_docs || {};
+    document.getElementById('code-docs-enabled').checked = !!cd.enabled;
 
     sourcesData = Array.isArray(cfg.sources) ? JSON.parse(JSON.stringify(cfg.sources)) : [];
     renderSourcesTable();

@@ -151,6 +151,8 @@ def _build_ssh_opts(source: dict) -> list[str]:
         "-o", "StrictHostKeyChecking=no",
         "-o", "ServerAliveInterval=15",
         "-o", "ServerAliveCountMax=3",
+        "-o", "GSSAPIAuthentication=no",
+        "-o", "UseDNS=no",
         "-p", str(port),
     ]
     if key:
