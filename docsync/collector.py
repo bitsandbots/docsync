@@ -149,11 +149,20 @@ def _build_ssh_opts(source: dict) -> list[str]:
         "-o", "BatchMode=yes",
         "-o", "ConnectTimeout=10",
         "-o", "StrictHostKeyChecking=no",
+        "-o", "ServerAliveInterval=15",
+        "-o", "ServerAliveCountMax=3",
         "-p", str(port),
     ]
     if key:
         opts += ["-i", str(resolve_path(key))]
     return opts
+
+
+# Exit codes that indicate a connection-level failure — retrying won't help.
+_SSH_FATAL_EXIT_CODES = {255}
+
+# Hosts confirmed unreachable this run: skip further sources on the same host.
+_dead_hosts: set[str] = set()
 
 
 def _rsync_remote(source: dict, staging_dir: Path, retries: int = 2) -> Optional[str]:
@@ -166,10 +175,12 @@ def _rsync_remote(source: dict, staging_dir: Path, retries: int = 2) -> Optional
     remote_path = source["path"].rstrip("/") + "/"
     ssh_opts = " ".join(_build_ssh_opts(source))
 
+    if host in _dead_hosts:
+        return f"host {host!r} unreachable (skipped after earlier failure this run)"
+
     cmd = [
         "rsync",
         "-a",
-        "--checksum",
         "--delete",
         "--timeout=30",
         "-e", ssh_opts,
@@ -182,11 +193,14 @@ def _rsync_remote(source: dict, staging_dir: Path, retries: int = 2) -> Optional
             proc = subprocess.run(
                 cmd,
                 capture_output=True,
-                timeout=120,
+                timeout=45,
             )
             if proc.returncode == 0:
                 return None
             stderr = proc.stderr.decode(errors="replace").strip()
+            if proc.returncode in _SSH_FATAL_EXIT_CODES:
+                _dead_hosts.add(host)
+                return f"rsync failed (exit {proc.returncode}): {stderr}"
             if attempt < retries:
                 log.warning(
                     "[%s] rsync attempt %d/%d failed (exit %d): %s — retrying…",
@@ -197,10 +211,11 @@ def _rsync_remote(source: dict, staging_dir: Path, retries: int = 2) -> Optional
             else:
                 return f"rsync failed (exit {proc.returncode}): {stderr}"
         except subprocess.TimeoutExpired:
+            _dead_hosts.add(host)
             if attempt < retries:
                 log.warning("[%s] rsync timed out — retrying…", source.get("name"))
             else:
-                return "rsync timed out after 120s"
+                return "rsync timed out after 45s"
         except FileNotFoundError:
             return "rsync binary not found; install rsync to use remote sources"
 
@@ -247,6 +262,8 @@ def collect_all(
     source_name: Optional[str] = None,
 ) -> list[CollectResult]:
     """Collect all sources (or a single named source)."""
+    _dead_hosts.clear()  # reset per-run host failure cache
+
     sources = config.get("sources", [])
     if source_name:
         sources = [s for s in sources if s.get("name") == source_name]
