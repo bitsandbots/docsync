@@ -8,7 +8,7 @@ Project-specific instructions are in `AGENTS.md` in the repository root. OpenCod
 
 ## Available Skills
 
-Skills are reusable instruction sets loaded on-demand via the `skill` tool. Global skills are stored in `~/.config/opencode/skills/`.
+Skills are reusable instruction sets loaded on-demand via the `skill` tool. Global skills are stored in `~/.claude/skills/` (works for both OpenCode and Claude Code).
 
 ### Development Workflow
 
@@ -60,14 +60,14 @@ When you ask OpenCode to work on something, it may automatically load relevant s
 | `AGENTS.md` | Project-specific instructions for AI agents |
 | `~/.config/opencode/AGENTS.md` | Global instructions (personal preferences) |
 | `~/.config/opencode/opencode.json` | OpenCode configuration (provider, model, etc.) |
-| `~/.config/opencode/skills/*/SKILL.md` | Skill definitions |
+| `~/.claude/skills/*/SKILL.md` | Global skill definitions |
 
 ## Skill Anatomy
 
 Each skill is a directory containing `SKILL.md`:
 
 ```
-~/.config/opencode/skills/bugfix/SKILL.md
+~/.claude/skills/bugfix/SKILL.md
 ```
 
 ```yaml
@@ -90,7 +90,7 @@ license: MIT
 
 ### Add Custom Skills
 
-Create `~/.config/opencode/skills/myskill/SKILL.md`:
+Create `~/.claude/skills/myskill/SKILL.md`:
 
 ```yaml
 ---
