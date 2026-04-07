@@ -134,7 +134,7 @@ def create_snapshot(
         src_arg = f"{user}@{host}:{source['path'].rstrip('/')}/"
         ssh_prefix = ["-e", " ".join(ssh_opts)]
 
-    cmd = ["rsync", "-a", "--delete", "--timeout=60",
+    cmd = ["rsync", "-a", "--delete", "--timeout=300",
            f"--exclude-from={excl_file}"]
     if ssh_prefix:
         cmd += ssh_prefix
@@ -147,7 +147,7 @@ def create_snapshot(
 
     error_msg: Optional[str] = None
     try:
-        proc = subprocess.run(cmd, capture_output=True, timeout=600)
+        proc = subprocess.run(cmd, capture_output=True, timeout=1200)
         if proc.returncode not in (0, 24):  # 24 = partial (vanished files) — OK
             error_msg = proc.stderr.decode(errors="replace").strip()
             log.error("[%s] rsync error: %s", name, error_msg)

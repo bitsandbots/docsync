@@ -161,7 +161,7 @@ def _build_ssh_opts(source: dict) -> list[str]:
         "-o", "ServerAliveInterval=15",
         "-o", "ServerAliveCountMax=3",
         "-o", "GSSAPIAuthentication=no",
-        "-o", "UseDNS=no",
+        "-o", "IdentitiesOnly=yes",
         "-p", str(port),
     ]
     if key:
@@ -193,7 +193,7 @@ def _rsync_remote(source: dict, staging_dir: Path, retries: int = 2) -> Optional
         "rsync",
         "-a",
         "--delete",
-        "--timeout=30",
+        "--timeout=300",
         "-e", ssh_opts,
         f"{user}@{host}:{remote_path}",
         str(staging_dir) + "/",
@@ -204,7 +204,7 @@ def _rsync_remote(source: dict, staging_dir: Path, retries: int = 2) -> Optional
             proc = subprocess.run(
                 cmd,
                 capture_output=True,
-                timeout=45,
+                timeout=300,
             )
             if proc.returncode == 0:
                 return None
