@@ -11,6 +11,28 @@
     {% endif %}
     <span class="meta-tag">docsync backup status</span>
   </div>
+  <div class="page-actions">
+    <button class="btn-action" id="btn-run-backup">Run Backup</button>
+  </div>
+</div>
+
+{# ── Quick Actions Panel ───────────────────────────────────────────────────── #}
+<div class="quick-actions" id="quick-actions" style="display:none;">
+  <div class="qa-card">
+    <h4 class="qa-title">Backup</h4>
+    <select class="qa-select" id="qa-backup-source">
+      <option value="">All sources</option>
+      {% for s in nav_categories %}
+      {% for src in s.sources %}
+      <option value="{{ src.name }}">{{ src.name }}</option>
+      {% endfor %}
+      {% endfor %}
+    </select>
+    <label class="qa-checkbox">
+      <input type="checkbox" id="qa-backup-full"> Full
+    </label>
+    <button class="btn-action btn-primary" id="btn-qa-backup">Run</button>
+  </div>
 </div>
 
 {# ── Alert banners ─────────────────────────────────────────────────────────── #}

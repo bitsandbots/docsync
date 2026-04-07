@@ -65,6 +65,14 @@ def test_slugify():
     assert _slugify("  leading spaces  ") == "leading-spaces"
 
 
+def test_slugify_truncates_long_names():
+    long_name = "a" * 250
+    slug = _slugify(long_name, truncate=True)
+    assert len(slug) <= 200
+    assert slug.startswith("aaaaa")
+    assert slug.endswith("-aaa")
+
+
 # ── SiteGenerator ─────────────────────────────────────────────────────────────
 
 class TestSiteGenerator:

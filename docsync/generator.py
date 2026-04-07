@@ -25,12 +25,26 @@ STATIC_DIR = _PKG_DIR / "static"
 _SLUG_RE = re.compile(r"[^\w\s-]")
 _COLLAPSE_RE = re.compile(r"[\s_]+")
 
+# Max path length (POSIX standard is 255 for filename, 4096 for full path)
+_MAX_FILENAME_LEN = 200
+_MAX_PATH_LEN = 2000
 
-def _slugify(text: str) -> str:
+
+def _slugify(text: str, *, truncate: bool = True) -> str:
+    """Convert text to URL-safe slug.
+
+    Args:
+        text: Input text to slugify
+        truncate: If True, truncate to MAX_FILENAME_LEN to avoid path issues
+    """
     text = text.lower().strip()
     text = _SLUG_RE.sub("", text)
     text = _COLLAPSE_RE.sub("-", text)
-    return text.strip("-") or "unnamed"
+    text = text.strip("-") or "unnamed"
+    if truncate and len(text) > _MAX_FILENAME_LEN:
+        # Truncate, keeping suffix for uniqueness
+        text = text[: _MAX_FILENAME_LEN - 5] + "-" + text[-3:]
+    return text
 
 
 # ── Nav model ─────────────────────────────────────────────────────────────────
@@ -82,7 +96,7 @@ def _build_nav(config: dict, docs_by_source: dict[str, list[ParsedDoc]]) -> list
         nav_docs = [
             NavDoc(
                 title=d.title,
-                url=f"{cat_slug}/{slug}/{_slugify(d.title)}.html",
+                url=f"{cat_slug}/{slug}/{_slugify(d.title, truncate=True)}.html",
                 description=d.description,
             )
             for d in source_docs_sorted
@@ -223,7 +237,7 @@ class SiteGenerator:
                 "title": doc.title,
                 "source_name": doc.source_name,
                 "rel_path": doc.rel_path,
-                "url": f"{cat_slug}/{src_slug}/{_slugify(doc.title)}.html",
+                "url": f"{cat_slug}/{src_slug}/{_slugify(doc.title, truncate=True)}.html",
                 "synced_at": self._last_synced,
             })
         ctx["updates"] = updates
@@ -336,7 +350,7 @@ class SiteGenerator:
             {
                 "title": d.title,
                 "description": d.description,
-                "url": f"{cat_slug}/{src_slug}/{_slugify(d.title)}.html",
+                "url": f"{cat_slug}/{src_slug}/{_slugify(d.title, truncate=True)}.html",
                 "tags": d.tags,
                 "rel_path": d.rel_path,
             }
@@ -375,7 +389,7 @@ class SiteGenerator:
         """Generate one doc page; returns the relative output path."""
         cat_slug = _slugify(nav_source.category)
         src_slug = nav_source.slug
-        doc_slug = _slugify(doc.title)
+        doc_slug = _slugify(doc.title, truncate=True)
         rel_out = f"{cat_slug}/{src_slug}/{doc_slug}.html"
         root_path = "../../"
 
@@ -384,7 +398,7 @@ class SiteGenerator:
                 return None
             return {
                 "title": d.title,
-                "url": f"{cat_slug}/{src_slug}/{_slugify(d.title)}.html",
+                "url": f"{cat_slug}/{src_slug}/{_slugify(d.title, truncate=True)}.html",
             }
 
         ctx = self._base_ctx(

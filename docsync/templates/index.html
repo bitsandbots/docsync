@@ -9,6 +9,57 @@
     <span>{{ total_docs }} docs across {{ total_sources }} sources</span>
     <span class="meta-tag">last synced {{ last_synced }}</span>
   </div>
+  <div class="page-actions">
+    <button class="btn-action" id="btn-run-sync">Sync All</button>
+    <button class="btn-action" id="btn-run-backup">Backup All</button>
+  </div>
+</div>
+
+{# ── Quick Actions Panel ───────────────────────────────────────────────────── #}
+<div class="quick-actions" id="quick-actions" style="display:none;">
+  <div class="qa-card">
+    <h4 class="qa-title">Sync</h4>
+    <select class="qa-select" id="qa-sync-source">
+      <option value="">All sources</option>
+      {% for s in nav_categories %}
+      {% for src in s.sources %}
+      <option value="{{ src.name }}">{{ src.name }}</option>
+      {% endfor %}
+      {% endfor %}
+    </select>
+    <button class="btn-action btn-primary" id="btn-qa-sync">Run</button>
+  </div>
+  <div class="qa-card">
+    <h4 class="qa-title">Backup</h4>
+    <select class="qa-select" id="qa-backup-source">
+      <option value="">All sources</option>
+      {% for s in nav_categories %}
+      {% for src in s.sources %}
+      <option value="{{ src.name }}">{{ src.name }}</option>
+      {% endfor %}
+      {% endfor %}
+    </select>
+    <label class="qa-checkbox">
+      <input type="checkbox" id="qa-backup-full"> Full
+    </label>
+    <button class="btn-action btn-primary" id="btn-qa-backup">Run</button>
+  </div>
+  <div class="qa-card">
+    <h4 class="qa-title">Check / Status</h4>
+    <div class="qa-actions">
+      <button class="btn-action btn-secondary" id="btn-qa-check">Check</button>
+      <button class="btn-action btn-secondary" id="btn-qa-status">Status</button>
+    </div>
+  </div>
+</div>
+
+<div class="log-panel" id="log-panel" style="display:none;">
+  <div class="log-header">
+    <span>Command Output</span>
+    <button class="btn-clear" id="btn-clear-log">Clear</button>
+  </div>
+  <div class="log-output" id="log-output"></div>
+  <div class="log-banner" id="log-banner"></div>
 </div>
 
 {% for category in nav_categories %}

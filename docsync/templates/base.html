@@ -174,6 +174,170 @@
     sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
   });
   overlay.addEventListener('click', closeSidebar);
+
+  // ── Quick Actions (Sync/Backup) ────────────────────────────────────────────
+  var logOutput = document.getElementById('log-output');
+  var logBanner = document.getElementById('log-banner');
+  var quickActions = document.getElementById('quick-actions');
+
+  function clearLog() {
+    if (logOutput) logOutput.textContent = '';
+    if (logBanner) {
+      logBanner.className = '';
+      logBanner.style.display = 'none';
+    }
+  }
+
+  function appendLogLine(text) {
+    if (!logOutput) return;
+    var ts = new Date().toLocaleTimeString('en-GB', { hour12: false });
+    var line = document.createElement('div');
+    line.innerHTML = '<span style="color:var(--cc-text-faint)">[' + ts + ']</span> ' + escapeHtml(text);
+    logOutput.appendChild(line);
+    logOutput.scrollTop = logOutput.scrollHeight;
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function setBanner(exitCode) {
+    if (!logBanner) return;
+    if (exitCode === 0) {
+      logBanner.className = 'ok';
+      logBanner.textContent = '✓ Command completed successfully';
+    } else {
+      logBanner.className = 'err';
+      logBanner.textContent = '✗ Command exited with code ' + exitCode;
+    }
+  }
+
+  function showLogPanel() {
+    if (quickActions) quickActions.style.display = 'none';
+    var logPanel = document.getElementById('log-panel');
+    if (logPanel) logPanel.style.display = 'block';
+  }
+
+  function runCommand(url, body, btn) {
+    showLogPanel();
+    clearLog();
+    if (btn) btn.disabled = true;
+
+    fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: body ? JSON.stringify(body) : undefined,
+    }).then(function(resp) {
+      if (!resp.ok) {
+        resp.text().then(function(t) { appendLogLine('Error: ' + t); });
+        if (btn) btn.disabled = false;
+        return;
+      }
+      var reader = resp.body.getReader();
+      var decoder = new TextDecoder();
+      var buf = '';
+      function pump() {
+        reader.read().then(function(result) {
+          if (result.done) {
+            if (btn) btn.disabled = false;
+            return;
+          }
+          buf += decoder.decode(result.value, {stream: true});
+          var parts = buf.split('\n\n');
+          buf = parts.pop();
+          parts.forEach(function(chunk) {
+            chunk.split('\n').forEach(function(line) {
+              if (!line.startsWith('data: ')) return;
+              var text = line.slice(6);
+              var m = text.match(/^\[exit:(\d+)\]$/);
+              if (m) {
+                setBanner(parseInt(m[1], 10));
+              } else {
+                appendLogLine(text);
+              }
+            });
+          });
+          pump();
+        });
+      }
+      pump();
+    }).catch(function(err) {
+      appendLogLine('Request failed: ' + err);
+      if (btn) btn.disabled = false;
+    });
+  }
+
+  // Global button handlers
+  document.getElementById('btn-run-sync')?.addEventListener('click', function() {
+    runCommand('/api/sync', {});
+  });
+
+  document.getElementById('btn-run-backup')?.addEventListener('click', function() {
+    runCommand('/api/backup/run', {});
+  });
+
+  // Quick action buttons
+  document.getElementById('btn-qa-sync')?.addEventListener('click', function() {
+    var src = document.getElementById('qa-sync-source')?.value || '';
+    runCommand('/api/sync', src ? {source: src} : {});
+  });
+
+  document.getElementById('btn-qa-backup')?.addEventListener('click', function() {
+    var src = document.getElementById('qa-backup-source')?.value || '';
+    var full = document.getElementById('qa-backup-full')?.checked || false;
+    runCommand('/api/backup/run', {source: src, full: full});
+  });
+
+  document.getElementById('btn-qa-check')?.addEventListener('click', function() {
+    showLogPanel();
+    clearLog();
+    var btn = this;
+    btn.disabled = true;
+    fetch('/api/check').then(function(resp) {
+      var reader = resp.body.getReader();
+      var decoder = new TextDecoder();
+      var buf = '';
+      function pump() {
+        reader.read().then(function(result) {
+          if (result.done) { btn.disabled = false; return; }
+          buf += decoder.decode(result.value, {stream: true});
+          var parts = buf.split('\n\n');
+          buf = parts.pop();
+          parts.forEach(function(chunk) {
+            chunk.split('\n').forEach(function(line) {
+              if (!line.startsWith('data: ')) return;
+              var text = line.slice(6);
+              var m = text.match(/^\[exit:(\d+)\]$/);
+              if (m) setBanner(parseInt(m[1], 10));
+              else appendLogLine(text);
+            });
+          });
+          pump();
+        });
+      }
+      pump();
+    }).catch(function(err) { appendLogLine('Request failed: ' + err); btn.disabled = false; });
+  });
+
+  document.getElementById('btn-qa-status')?.addEventListener('click', function() {
+    showLogPanel();
+    clearLog();
+    var btn = this;
+    btn.disabled = true;
+    fetch('/api/status').then(function(r) { return r.json(); })
+      .then(function(data) {
+        appendLogLine('Last sync: ' + (data.last_sync || 'Never'));
+        appendLogLine('Total files: ' + (data.total_files || 0));
+        Object.keys(data.sources || {}).forEach(function(s) {
+          appendLogLine('  ' + s + ': ' + data.sources[s] + ' files');
+        });
+        setBanner(0);
+        btn.disabled = false;
+      })
+      .catch(function(err) { appendLogLine('Fetch failed: ' + err); btn.disabled = false; });
+  });
+
+  document.getElementById('btn-clear-log')?.addEventListener('click', clearLog);
 })();
 </script>
 </body>
