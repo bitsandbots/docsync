@@ -21,6 +21,8 @@ pytest tests/test_config.py::TestConfigLoading::test_valid_config  # Single test
 # CLI usage
 docsync init                       # Create default config at ~/.config/docsync/docsync.yaml
 docsync check                      # Validate config + test SSH connectivity
+docsync check --no-ssh             # Skip SSH tests (useful offline or in CI)
+docsync add-source /path/to/dir    # Interactively add a local source to config
 docsync sync                       # Collect → parse → generate site
 docsync sync --source NAME         # Single source only
 docsync watch --debounce 3         # Continuous re-sync on file changes
@@ -29,11 +31,16 @@ docsync all                        # sync + backup run
 
 # Backup subcommands
 docsync backup run
+docsync backup run --full       # Force full (non-incremental) snapshot
 docsync backup list SOURCE
 docsync backup restore SOURCE SNAPSHOT
 docsync backup verify SOURCE
+docsync backup prune            # Apply retention policy without running backup
 docsync backup status
 docsync backup size
+
+# Dev install (required to use `docsync` CLI from source checkout)
+pip install -e .
 ```
 
 **Config location:** `~/.config/docsync/docsync.yaml` (override with `--config` or `DOCSYNC_CONFIG` env var)
@@ -55,14 +62,16 @@ The documentation pipeline runs in three stages: **collect → parse → generat
 **`generator.py`** — Jinja2 renders 11+ page types including per-doc pages, per-source indexes, a search page, an updates feed, and a backup dashboard. Navigation is built as a tree: `NavCategory → NavSource → NavDoc`. Templates live in `templates/`, static assets in `static/`.
 
 **Backup subsystem (`docsync/backup/`):**
+
 - `engine.py` — Orchestrates per-source backup runs; applies retention after each snapshot; logs events to `BASE_DIR/_global/backup-log.jsonl`
 - `snapshot.py` — Creates full or incremental archives with zstd/gzip compression; supports optional DB dumps (MySQL, PostgreSQL, SQLite) via configurable dump commands
 - `retention.py` — Prunes snapshots by daily/weekly/monthly buckets
 - `verify.py` / `restore.py` / `report.py` — Integrity checks, extraction, and status dashboard
+- `hooks.py` / `notify.py` — Post-backup hooks and notifications; supports webhook (ntfy/Gotify-compatible) and SMS (Twilio via env vars); configured via `backup.notifications` in the config
 
 ## Config Schema Notes
 
-Sources have `type: local` or `type: remote`. Remote sources add `host`, `user`, `port`, and optionally `key`. Both types use the same `include`/`exclude` glob lists and `backup:` block.
+Sources have `type: local` or `type: remote`. Remote sources add `host`, `user`, `port`, and optionally `key`. Set `strict_host_checking: false` to skip SSH known_hosts verification (defaults to true). Both types use the same `include`/`exclude` glob lists and `backup:` block.
 
 The `backup:` block under a source can set `priority: high|normal|low`, `include_all: bool`, and optionally `db:` for database dumps.
 
