@@ -62,3 +62,29 @@ def test_source_keys_isolation(tmp_path):
     m.update("beta", "b.md", fb)
     assert m.source_keys("alpha") == ["a.md"]
     assert m.source_keys("beta") == ["b.md"]
+
+
+def test_update_stores_doc_metadata(tmp_path):
+    m = Manifest(tmp_path / "manifest.json")
+    f = tmp_path / "guide.md"
+    f.write_text("# Guide")
+    m.update("proj", "guide.md", f, title="My Guide", description="A guide", order=2, tags=["howto"])
+    m.save()
+
+    m2 = Manifest(tmp_path / "manifest.json")
+    entry = m2._data["proj/guide.md"]
+    assert entry["title"] == "My Guide"
+    assert entry["description"] == "A guide"
+    assert entry["order"] == 2
+    assert entry["tags"] == ["howto"]
+
+
+def test_update_without_metadata_still_works(tmp_path):
+    m = Manifest(tmp_path / "manifest.json")
+    f = tmp_path / "doc.md"
+    f.write_text("content")
+    m.update("src", "doc.md", f)
+    entry = m._data["src/doc.md"]
+    assert "hash" in entry
+    assert "synced_at" in entry
+    assert "title" not in entry

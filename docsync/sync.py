@@ -72,18 +72,45 @@ def run_sync(
         stats.files_parsed += len(docs)
         all_docs.extend(docs)
 
-        # Update manifest for successfully collected files
+        # Update manifest — store doc metadata for changed files so the nav
+        # can be rebuilt from the manifest without re-reading files next run.
+        parsed_by_key = {f"{d.source_name}/{d.rel_path}": d for d in docs}
         for f in result.files:
-            manifest.update(f.source_name, f.rel_path, f.abs_path)
+            key = f"{f.source_name}/{f.rel_path}"
+            parsed = parsed_by_key.get(key)
+            if parsed:
+                manifest.update(
+                    f.source_name,
+                    f.rel_path,
+                    f.abs_path,
+                    title=parsed.title,
+                    description=parsed.description,
+                    tags=parsed.tags,
+                    order=parsed.order,
+                )
+            else:
+                manifest.update(f.source_name, f.rel_path, f.abs_path)
 
     manifest.save()
 
-    # Generate static site — pass changed docs as "recent updates"
+    # Generate static site — nav from manifest metadata (no re-parsing),
+    # HTML regenerated only for changed docs.
     sync_ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
-    if all_docs or not stats.errors:
+
+    from .parser import load_nav_docs_from_manifest
+
+    nav_docs = load_nav_docs_from_manifest(config, manifest._data)
+
+    # Merge: changed docs (with full HTML) override nav-only metadata docs.
+    changed_by_key = {f"{d.source_name}/{d.rel_path}": d for d in all_docs}
+    merged_docs = [
+        changed_by_key.get(f"{d.source_name}/{d.rel_path}", d) for d in nav_docs
+    ]
+
+    if merged_docs or not stats.errors:
         try:
             stats.pages_generated = generate_site(
-                config, all_docs, recent_docs=all_docs, sync_timestamp=sync_ts
+                config, merged_docs, recent_docs=all_docs, sync_timestamp=sync_ts
             )
         except Exception as exc:
             log.error("Site generation failed: %s", exc)

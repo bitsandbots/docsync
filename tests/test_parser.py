@@ -7,13 +7,14 @@ from docsync.parser import (
     TocEntry,
     _extract_front_matter,
     _slugify,
+    load_nav_docs_from_manifest,
     parse_file,
     parse_files,
 )
 from docsync.collector import CollectedFile
 
-
 # ── _slugify ──────────────────────────────────────────────────────────────────
+
 
 def test_slugify_basic():
     assert _slugify("Hello World") == "hello-world"
@@ -32,6 +33,7 @@ def test_slugify_handles_hyphens():
 
 
 # ── _extract_front_matter ─────────────────────────────────────────────────────
+
 
 def test_extract_front_matter_basic():
     src = "---\ntitle: My Doc\ntags: [a, b]\n---\n# Body\n"
@@ -56,9 +58,12 @@ def test_extract_invalid_yaml_returns_empty():
 
 # ── parse_file ────────────────────────────────────────────────────────────────
 
+
 def test_parse_file_basic(tmp_path):
     f = tmp_path / "guide.md"
-    f.write_text("---\ntitle: My Guide\ndescription: A guide.\ntags: [howto]\norder: 2\n---\n\n# Intro\n\nHello world.\n\n## Details\n\nMore info.\n")
+    f.write_text(
+        "---\ntitle: My Guide\ndescription: A guide.\ntags: [howto]\norder: 2\n---\n\n# Intro\n\nHello world.\n\n## Details\n\nMore info.\n"
+    )
     doc = parse_file(f, "test-src", "guide.md")
 
     assert doc is not None
@@ -116,6 +121,7 @@ def test_parse_file_xss_sanitized(tmp_path):
 
 # ── parse_files ───────────────────────────────────────────────────────────────
 
+
 def make_cf(abs_path: Path, changed: bool = True) -> CollectedFile:
     return CollectedFile(
         source_name="src",
@@ -139,6 +145,69 @@ def test_parse_files_changed_only(tmp_path):
     f2 = tmp_path / "b.md"
     f1.write_text("# A\n")
     f2.write_text("# B\n")
-    docs = parse_files([make_cf(f1, changed=True), make_cf(f2, changed=False)], changed_only=True)
+    docs = parse_files(
+        [make_cf(f1, changed=True), make_cf(f2, changed=False)], changed_only=True
+    )
     assert len(docs) == 1
     assert docs[0].title == "A"
+
+
+# ── load_nav_docs_from_manifest ───────────────────────────────────────────────
+
+_MINIMAL_CONFIG = {
+    "sources": [
+        {"name": "proj", "type": "local", "path": "/fake"},
+        {"name": "other", "type": "local", "path": "/other"},
+    ]
+}
+
+
+def test_load_nav_docs_uses_stored_metadata():
+    manifest_data = {
+        "proj/docs/guide.md": {
+            "hash": "abc",
+            "synced_at": 0,
+            "title": "My Guide",
+            "description": "A guide",
+            "order": 2,
+            "tags": ["howto"],
+        }
+    }
+    docs = load_nav_docs_from_manifest(_MINIMAL_CONFIG, manifest_data)
+    assert len(docs) == 1
+    doc = docs[0]
+    assert doc.source_name == "proj"
+    assert doc.rel_path == "docs/guide.md"
+    assert doc.title == "My Guide"
+    assert doc.description == "A guide"
+    assert doc.order == 2
+    assert doc.tags == ["howto"]
+    assert doc.html_body == ""  # nav-only sentinel
+
+
+def test_load_nav_docs_falls_back_to_filename_title():
+    manifest_data = {
+        "proj/setup-guide.md": {"hash": "abc", "synced_at": 0}
+    }
+    docs = load_nav_docs_from_manifest(_MINIMAL_CONFIG, manifest_data)
+    assert len(docs) == 1
+    assert docs[0].title == "Setup Guide"  # derived from filename
+
+
+def test_load_nav_docs_skips_unknown_sources():
+    manifest_data = {
+        "unknown-src/file.md": {"hash": "abc", "synced_at": 0},
+        "proj/file.md": {"hash": "def", "synced_at": 0},
+    }
+    docs = load_nav_docs_from_manifest(_MINIMAL_CONFIG, manifest_data)
+    assert len(docs) == 1
+    assert docs[0].source_name == "proj"
+
+
+def test_load_nav_docs_skips_keys_without_slash():
+    manifest_data = {
+        "no-slash": {"hash": "abc", "synced_at": 0},
+        "proj/file.md": {"hash": "def", "synced_at": 0},
+    }
+    docs = load_nav_docs_from_manifest(_MINIMAL_CONFIG, manifest_data)
+    assert len(docs) == 1

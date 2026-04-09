@@ -30,9 +30,9 @@ _SLUG_COLLAPSE_RE = re.compile(r"[\s-]+")
 
 @dataclass
 class TocEntry:
-    level: int      # 1-6
-    text: str       # plain-text heading
-    slug: str       # URL fragment
+    level: int  # 1-6
+    text: str  # plain-text heading
+    slug: str  # URL fragment
 
 
 @dataclass
@@ -57,6 +57,7 @@ class ParsedDoc:
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _slugify(text: str) -> str:
     """Convert a heading string to a URL-safe slug."""
     text = text.lower().strip()
@@ -76,7 +77,7 @@ def _extract_front_matter(source: str) -> tuple[dict[str, Any], str]:
             meta = {}
     except yaml.YAMLError:
         meta = {}
-    body = source[m.end():]
+    body = source[m.end() :]
     return meta, body
 
 
@@ -116,6 +117,7 @@ def _inject_heading_ids(rendered_html: str, toc: list[TocEntry]) -> str:
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
+
 
 def parse_file(abs_path: Path, source_name: str, rel_path: str) -> Optional[ParsedDoc]:
     """Parse a single markdown file and return a ParsedDoc.
@@ -178,13 +180,59 @@ def parse_files(
     return docs
 
 
+def load_nav_docs_from_manifest(
+    config: dict,
+    manifest_data: dict[str, dict],
+) -> list[ParsedDoc]:
+    """Build lightweight ParsedDoc objects from metadata cached in the manifest.
+
+    No disk I/O or markdown rendering — uses title/description/order/tags stored
+    by previous parse runs.  Falls back to a filename-derived title for older
+    entries that predate metadata storage.
+
+    Returns docs with ``html_body=""`` — the generator skips HTML page
+    regeneration for these, preserving existing output files unchanged.
+    """
+    sources = {s["name"]: s for s in config.get("sources", [])}
+    docs: list[ParsedDoc] = []
+
+    for key, entry in manifest_data.items():
+        if "/" not in key:
+            continue
+        source_name = key.split("/", 1)[0]
+        rel_path = key[len(source_name) + 1 :]
+
+        if source_name not in sources:
+            continue
+
+        title = (
+            entry.get("title")
+            or Path(rel_path).stem.replace("-", " ").replace("_", " ").title()
+        )
+
+        docs.append(
+            ParsedDoc(
+                source_name=source_name,
+                rel_path=rel_path,
+                abs_path=Path(),  # not needed for nav-only docs
+                title=title,
+                description=entry.get("description", ""),
+                tags=entry.get("tags", []),
+                order=entry.get("order", 9999),
+                html_body="",  # sentinel: nav-only, no HTML regeneration
+            )
+        )
+
+    return docs
+
+
 # ── Code documentation extraction ────────────────────────────────────────────
 
 _CODE_DOC_PATTERNS: dict[str, tuple[str, str]] = {
     # language: (glob_pattern, regex_to_extract)
     "python": ("**/*.py", r'"""(.*?)"""'),
-    "php":    ("**/*.php", r"/\*\*(.*?)\*/"),
-    "cpp":    ("**/*.{cpp,h,ino}", r"///(.*)$"),
+    "php": ("**/*.php", r"/\*\*(.*?)\*/"),
+    "cpp": ("**/*.{cpp,h,ino}", r"///(.*)$"),
 }
 
 
@@ -204,7 +252,9 @@ def extract_code_docs(
 
     for lang, lang_cfg in languages.items():
         pattern = lang_cfg.get("pattern", _CODE_DOC_PATTERNS.get(lang, ("", ""))[1])
-        files_glob = lang_cfg.get("files", _CODE_DOC_PATTERNS.get(lang, ("**/*", ""))[0])
+        files_glob = lang_cfg.get(
+            "files", _CODE_DOC_PATTERNS.get(lang, ("**/*", ""))[0]
+        )
 
         if not pattern:
             continue
@@ -237,13 +287,15 @@ def extract_code_docs(
             rel = src_file.relative_to(source_root).as_posix()
             title = src_file.stem.replace("_", " ").title() + f" ({lang})"
 
-            docs.append(ParsedDoc(
-                source_name=source_root.name,
-                rel_path=rel,
-                abs_path=src_file,
-                title=title,
-                description=f"Code documentation extracted from {rel}",
-                html_body=rendered,
-            ))
+            docs.append(
+                ParsedDoc(
+                    source_name=source_root.name,
+                    rel_path=rel,
+                    abs_path=src_file,
+                    title=title,
+                    description=f"Code documentation extracted from {rel}",
+                    html_body=rendered,
+                )
+            )
 
     return docs

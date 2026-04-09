@@ -343,3 +343,20 @@ def load_and_validate(path: Optional[Path] = None) -> tuple[dict, ValidationResu
     config = load_config(path)
     result = validate_config(config)
     return config, result
+
+
+def get_source_paths(config: dict) -> dict[str, Path]:
+    """Return a dict mapping source names to their resolved root paths."""
+    from pathlib import Path
+
+    sources = config.get("sources", [])
+    paths: dict[str, Path] = {}
+    for src in sources:
+        name = src.get("name", "")
+        if not name:
+            continue
+        # Local sources use 'path', remote sources use staging
+        if src.get("type") == "remote":
+            continue
+        paths[name] = Path(src.get("path", "")).expanduser().resolve()
+    return paths

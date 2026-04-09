@@ -30,6 +30,23 @@ _MAX_FILENAME_LEN = 200
 _MAX_PATH_LEN = 2000
 
 
+def _path_slug(rel_path: str) -> str:
+    """Derive a unique URL slug from a file's rel_path.
+
+    Path components are joined with '--' so files named the same thing in
+    different subdirectories (e.g. README.md appearing hundreds of times)
+    each get a distinct URL rather than colliding on a title-derived slug.
+
+    Examples:
+        guide.md             → guide
+        docs/guide.md        → docs--guide
+        skills/foo/skill.md  → skills--foo--skill
+    """
+    path = Path(rel_path)
+    parts = [_slugify(p) for p in (*path.parent.parts, path.stem) if p and p != "."]
+    return "--".join(parts) or "unnamed"
+
+
 def _slugify(text: str, *, truncate: bool = True) -> str:
     """Convert text to URL-safe slug.
 
@@ -49,10 +66,11 @@ def _slugify(text: str, *, truncate: bool = True) -> str:
 
 # ── Nav model ─────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class NavDoc:
     title: str
-    url: str       # relative to site root
+    url: str  # relative to site root
     description: str = ""
 
 
@@ -61,7 +79,7 @@ class NavSource:
     name: str
     slug: str
     category: str
-    type: str         # local | remote
+    type: str  # local | remote
     path: str
     description: str
     backup_enabled: bool
@@ -79,7 +97,12 @@ class NavCategory:
 
 # ── Site context builder ───────────────────────────────────────────────────────
 
-def _build_nav(config: dict, docs_by_source: dict[str, list[ParsedDoc]]) -> list[NavCategory]:
+
+def _build_nav(
+    config: dict,
+    docs_by_source: dict[str, list[ParsedDoc]],
+    sync_timestamp: Optional[str] = None,
+) -> list[NavCategory]:
     """Build the navigation tree from config sources and parsed docs."""
     categories: dict[str, NavCategory] = {}
 
@@ -96,7 +119,7 @@ def _build_nav(config: dict, docs_by_source: dict[str, list[ParsedDoc]]) -> list
         nav_docs = [
             NavDoc(
                 title=d.title,
-                url=f"{cat_slug}/{slug}/{_slugify(d.title, truncate=True)}.html",
+                url=f"{cat_slug}/{slug}/{_path_slug(d.rel_path)}.html",
                 description=d.description,
             )
             for d in source_docs_sorted
@@ -112,6 +135,7 @@ def _build_nav(config: dict, docs_by_source: dict[str, list[ParsedDoc]]) -> list
             backup_enabled=src.get("backup", {}).get("enabled", False),
             index_url=index_url,
             doc_count=len(nav_docs),
+            last_synced=sync_timestamp or "",
             docs=nav_docs,
         )
 
@@ -124,6 +148,7 @@ def _build_nav(config: dict, docs_by_source: dict[str, list[ParsedDoc]]) -> list
 
 # ── Jinja2 environment ─────────────────────────────────────────────────────────
 
+
 def _make_env() -> Environment:
     env = Environment(
         loader=FileSystemLoader(str(TEMPLATES_DIR)),
@@ -135,6 +160,7 @@ def _make_env() -> Environment:
 
 
 # ── Generator ─────────────────────────────────────────────────────────────────
+
 
 class SiteGenerator:
     """Generates the full static site from config and parsed documents."""
@@ -157,9 +183,11 @@ class SiteGenerator:
         for doc in docs:
             self._docs_by_source.setdefault(doc.source_name, []).append(doc)
 
-        self._nav = _build_nav(config, self._docs_by_source)
+        self._nav = _build_nav(config, self._docs_by_source, sync_timestamp)
         self._env = _make_env()
-        self._last_synced = sync_timestamp or datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+        self._last_synced = sync_timestamp or datetime.datetime.now().strftime(
+            "%Y-%m-%d %H:%M"
+        )
 
     # ── Shared template context ────────────────────────────────────────────────
 
@@ -208,12 +236,14 @@ class SiteGenerator:
             bk_statuses = []
 
         ctx = self._base_ctx(root_path="", current_page="home")
-        ctx.update({
-            "page_title": "Dashboard",
-            "total_docs": total_docs,
-            "total_sources": total_sources,
-            "backup_statuses": bk_statuses,
-        })
+        ctx.update(
+            {
+                "page_title": "Dashboard",
+                "total_docs": total_docs,
+                "total_sources": total_sources,
+                "backup_statuses": bk_statuses,
+            }
+        )
         self._write("index.html", self._render("index.html", ctx))
 
     def _gen_static_pages(self, recent_docs: Optional[list] = None) -> None:
@@ -229,17 +259,26 @@ class SiteGenerator:
         updates = []
         for doc in (recent_docs or [])[:50]:
             cat_slug = _slugify(
-                next((c.name for c in self._nav
-                      for s in c.sources if s.name == doc.source_name), "misc")
+                next(
+                    (
+                        c.name
+                        for c in self._nav
+                        for s in c.sources
+                        if s.name == doc.source_name
+                    ),
+                    "misc",
+                )
             )
             src_slug = _slugify(doc.source_name)
-            updates.append({
-                "title": doc.title,
-                "source_name": doc.source_name,
-                "rel_path": doc.rel_path,
-                "url": f"{cat_slug}/{src_slug}/{_slugify(doc.title, truncate=True)}.html",
-                "synced_at": self._last_synced,
-            })
+            updates.append(
+                {
+                    "title": doc.title,
+                    "source_name": doc.source_name,
+                    "rel_path": doc.rel_path,
+                    "url": f"{cat_slug}/{src_slug}/{_path_slug(doc.rel_path)}.html",
+                    "synced_at": self._last_synced,
+                }
+            )
         ctx["updates"] = updates
         self._write("updates.html", self._render("updates.html", ctx))
 
@@ -264,61 +303,74 @@ class SiteGenerator:
         # Storage gauge
         used_bytes = sum(s["total_size_bytes"] for s in statuses)
         max_gb = backup_cfg.get("max_total_size_gb", 0)
-        max_bytes = int(max_gb * 1024 ** 3) if max_gb else 0
+        max_bytes = int(max_gb * 1024**3) if max_gb else 0
         pct_used = min(100, int(used_bytes / max_bytes * 100)) if max_bytes > 0 else 0
 
         # Alert banners
         alerts: list[dict] = []
         failed = [s for s in statuses if s["health"] == "err"]
-        stale = [s for s in statuses if s["health"] == "warn" and s["snapshot_count"] > 0]
+        stale = [
+            s for s in statuses if s["health"] == "warn" and s["snapshot_count"] > 0
+        ]
         if failed:
-            alerts.append({
-                "level": "err",
-                "message": f"{len(failed)} source(s) failed last backup: "
-                           + ", ".join(s["source_name"] for s in failed),
-            })
+            alerts.append(
+                {
+                    "level": "err",
+                    "message": f"{len(failed)} source(s) failed last backup: "
+                    + ", ".join(s["source_name"] for s in failed),
+                }
+            )
         if stale:
-            alerts.append({
-                "level": "warn",
-                "message": f"{len(stale)} source(s) have stale backups: "
-                           + ", ".join(s["source_name"] for s in stale),
-            })
+            alerts.append(
+                {
+                    "level": "warn",
+                    "message": f"{len(stale)} source(s) have stale backups: "
+                    + ", ".join(s["source_name"] for s in stale),
+                }
+            )
         if max_bytes and pct_used >= 80:
-            alerts.append({
-                "level": "warn",
-                "message": f"Storage at {pct_used}% of limit "
-                           f"({human_size(used_bytes)} / {human_size(max_bytes)})",
-            })
+            alerts.append(
+                {
+                    "level": "warn",
+                    "message": f"Storage at {pct_used}% of limit "
+                    f"({human_size(used_bytes)} / {human_size(max_bytes)})",
+                }
+            )
 
         # Main backups dashboard
         ctx = self._base_ctx(root_path="", current_page="backups")
-        ctx.update({
-            "page_title": "Backups",
-            "backup_statuses": statuses,
-            "backup_events": events,
-            "storage_used_bytes": used_bytes,
-            "storage_used_human": human_size(used_bytes),
-            "storage_max_bytes": max_bytes,
-            "storage_max_human": human_size(max_bytes) if max_bytes else "",
-            "storage_pct": pct_used,
-            "alerts": alerts,
-        })
+        ctx.update(
+            {
+                "page_title": "Backups",
+                "backup_statuses": statuses,
+                "backup_events": events,
+                "storage_used_bytes": used_bytes,
+                "storage_used_human": human_size(used_bytes),
+                "storage_max_bytes": max_bytes,
+                "storage_max_human": human_size(max_bytes) if max_bytes else "",
+                "storage_pct": pct_used,
+                "alerts": alerts,
+            }
+        )
         self._write("backups.html", self._render("backups.html", ctx))
         pages = 1
 
         # Per-source snapshot browser pages
         backup_sources = [
-            src for src in self._config.get("sources", [])
+            src
+            for src in self._config.get("sources", [])
             if src.get("backup", {}).get("enabled", True)
         ]
         for src in backup_sources:
             name = src["name"]
             from .backup.report import _source_slug
+
             slug = _source_slug(name)
 
             snaps: list[dict] = []
             if base_dir_str:
                 from pathlib import Path as _Path
+
                 src_dir = source_backup_dir(_Path(base_dir_str).expanduser(), name)
                 snaps = snapshot_list(src_dir) if src_dir.exists() else []
 
@@ -326,21 +378,25 @@ class SiteGenerator:
             src_status = next((s for s in statuses if s["source_name"] == name), {})
 
             ctx = self._base_ctx(root_path="../", current_page="backups")
-            ctx.update({
-                "page_title": f"{name} — Snapshots",
-                "source_name": name,
-                "source_slug": slug,
-                "source_type": src.get("type", "local"),
-                "source_path": src.get("path", src.get("host", "")),
-                "snapshots": snaps,
-                "status": src_status,
-            })
+            ctx.update(
+                {
+                    "page_title": f"{name} — Snapshots",
+                    "source_name": name,
+                    "source_slug": slug,
+                    "source_type": src.get("type", "local"),
+                    "source_path": src.get("path", src.get("host", "")),
+                    "snapshots": snaps,
+                    "status": src_status,
+                }
+            )
             self._write(f"backups/{slug}.html", self._render("backup_source.html", ctx))
             pages += 1
 
         return pages
 
-    def _gen_project_page(self, nav_source: NavSource, source_docs: list[ParsedDoc]) -> None:
+    def _gen_project_page(
+        self, nav_source: NavSource, source_docs: list[ParsedDoc]
+    ) -> None:
         cat_slug = _slugify(nav_source.category)
         src_slug = nav_source.slug
         root_path = "../../"
@@ -350,7 +406,7 @@ class SiteGenerator:
             {
                 "title": d.title,
                 "description": d.description,
-                "url": f"{cat_slug}/{src_slug}/{_slugify(d.title, truncate=True)}.html",
+                "url": f"{cat_slug}/{src_slug}/{_path_slug(d.rel_path)}.html",
                 "tags": d.tags,
                 "rel_path": d.rel_path,
             }
@@ -361,19 +417,21 @@ class SiteGenerator:
             root_path=root_path,
             current_source=nav_source.name,
         )
-        ctx.update({
-            "page_title": nav_source.name,
-            "source": {
-                "name": nav_source.name,
-                "category": nav_source.category,
-                "type": nav_source.type,
-                "path": nav_source.path,
-                "backup_enabled": nav_source.backup_enabled,
-                "doc_count": len(source_docs),
-                "index_url": nav_source.index_url,
-            },
-            "docs": doc_list,
-        })
+        ctx.update(
+            {
+                "page_title": nav_source.name,
+                "source": {
+                    "name": nav_source.name,
+                    "category": nav_source.category,
+                    "type": nav_source.type,
+                    "path": nav_source.path,
+                    "backup_enabled": nav_source.backup_enabled,
+                    "doc_count": len(source_docs),
+                    "index_url": nav_source.index_url,
+                },
+                "docs": doc_list,
+            }
+        )
         self._write(
             f"{cat_slug}/{src_slug}/index.html",
             self._render("project.html", ctx),
@@ -389,8 +447,7 @@ class SiteGenerator:
         """Generate one doc page; returns the relative output path."""
         cat_slug = _slugify(nav_source.category)
         src_slug = nav_source.slug
-        doc_slug = _slugify(doc.title, truncate=True)
-        rel_out = f"{cat_slug}/{src_slug}/{doc_slug}.html"
+        rel_out = f"{cat_slug}/{src_slug}/{_path_slug(doc.rel_path)}.html"
         root_path = "../../"
 
         def nav_entry(d: Optional[ParsedDoc]) -> Optional[dict]:
@@ -406,17 +463,19 @@ class SiteGenerator:
             current_source=nav_source.name,
             current_doc_url=rel_out,
         )
-        ctx.update({
-            "page_title": doc.title,
-            "doc": doc,
-            "source": {
-                "name": nav_source.name,
-                "category": nav_source.category,
-                "index_url": nav_source.index_url,
-            },
-            "prev_doc": nav_entry(prev_doc),
-            "next_doc": nav_entry(next_doc),
-        })
+        ctx.update(
+            {
+                "page_title": doc.title,
+                "doc": doc,
+                "source": {
+                    "name": nav_source.name,
+                    "category": nav_source.category,
+                    "index_url": nav_source.index_url,
+                },
+                "prev_doc": nav_entry(prev_doc),
+                "next_doc": nav_entry(next_doc),
+            }
+        )
         self._write(rel_out, self._render("doc.html", ctx))
         return rel_out
 
@@ -451,11 +510,13 @@ class SiteGenerator:
 
         # Search index
         from .search import build_index, write_index
+
         index_entries = build_index(self._all_docs, self._nav)
         write_index(index_entries, self._output_dir)
 
         # Backup status JSON
         from .backup.report import backup_status_json
+
         try:
             backup_status_json(self._config, self._output_dir)
         except Exception as exc:
@@ -465,14 +526,24 @@ class SiteGenerator:
         for nav_cat in self._nav:
             for nav_source in nav_cat.sources:
                 source_docs = self._docs_by_source.get(nav_source.name, [])
-                source_docs_sorted = sorted(source_docs, key=lambda d: (d.order, d.title))
+                source_docs_sorted = sorted(
+                    source_docs, key=lambda d: (d.order, d.title)
+                )
 
                 self._gen_project_page(nav_source, source_docs_sorted)
                 pages += 1
 
                 for i, doc in enumerate(source_docs_sorted):
+                    if not doc.html_body:
+                        # Nav-only doc loaded from manifest metadata —
+                        # the existing HTML page is preserved as-is.
+                        continue
                     prev_d = source_docs_sorted[i - 1] if i > 0 else None
-                    next_d = source_docs_sorted[i + 1] if i < len(source_docs_sorted) - 1 else None
+                    next_d = (
+                        source_docs_sorted[i + 1]
+                        if i < len(source_docs_sorted) - 1
+                        else None
+                    )
                     self._gen_doc_page(doc, nav_source, prev_d, next_d)
                     pages += 1
 
@@ -482,6 +553,7 @@ class SiteGenerator:
 
 # ── Public API ─────────────────────────────────────────────────────────────────
 
+
 def generate_site(
     config: dict,
     docs: list[ParsedDoc],
@@ -489,7 +561,7 @@ def generate_site(
     sync_timestamp: Optional[str] = None,
 ) -> int:
     """Generate the static site. Returns page count.
-    
+
     Args:
         sync_timestamp: Optional timestamp string for "last synced" display.
             If None, uses current time.

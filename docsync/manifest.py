@@ -18,7 +18,7 @@ DEFAULT_MANIFEST_PATH = Path("~/.cache/docsync/manifest.json").expanduser()
 
 class Manifest:
     """Persistent dict of {source_name/rel_path -> {hash, synced_at}}.
-    
+
     Uses file locking to prevent corruption from concurrent processes.
     """
 
@@ -69,13 +69,33 @@ class Manifest:
             return True
         return sha256_file(file_path) != stored
 
-    def update(self, source_name: str, rel_path: str, file_path: Path) -> str:
-        """Record the current hash for a file and return it."""
+    def update(
+        self,
+        source_name: str,
+        rel_path: str,
+        file_path: Path,
+        *,
+        title: str = "",
+        description: str = "",
+        tags: Optional[list] = None,
+        order: int = 9999,
+    ) -> str:
+        """Record the current hash for a file and return it.
+
+        Optional keyword args cache doc metadata so the nav can be rebuilt
+        from the manifest without re-parsing files from disk.
+        """
         digest = sha256_file(file_path)
-        self._data[self._key(source_name, rel_path)] = {
-            "hash": digest,
-            "synced_at": time.time(),
-        }
+        entry: dict = {"hash": digest, "synced_at": time.time()}
+        if title:
+            entry["title"] = title
+        if description:
+            entry["description"] = description
+        if tags:
+            entry["tags"] = tags
+        if order != 9999:
+            entry["order"] = order
+        self._data[self._key(source_name, rel_path)] = entry
         return digest
 
     def remove_source(self, source_name: str) -> None:
@@ -86,7 +106,7 @@ class Manifest:
     def source_keys(self, source_name: str) -> list[str]:
         """Return all rel_paths known for a source."""
         prefix = f"{source_name}/"
-        return [k[len(prefix):] for k in self._data if k.startswith(prefix)]
+        return [k[len(prefix) :] for k in self._data if k.startswith(prefix)]
 
     @property
     def path(self) -> Path:
