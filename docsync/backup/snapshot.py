@@ -31,7 +31,8 @@ def parse_timestamp(ts: str) -> Optional[datetime]:
 def list_snapshots(source_backup_dir: Path) -> list[str]:
     """Return snapshot directory names sorted oldest→newest."""
     snaps = [
-        d.name for d in source_backup_dir.iterdir()
+        d.name
+        for d in source_backup_dir.iterdir()
         if d.is_dir() and parse_timestamp(d.name) is not None
     ]
     return sorted(snaps)
@@ -72,12 +73,25 @@ def _build_exclude_file(excludes: list[str]) -> str:
 
 
 def _count_files(directory: Path) -> int:
-    return sum(1 for _ in directory.rglob("*") if _.is_file()
-               and _.name != SNAPSHOT_META_FILE)
+    count = 0
+    for entry in directory.rglob("*"):
+        try:
+            if entry.is_file() and entry.name != SNAPSHOT_META_FILE:
+                count += 1
+        except OSError:
+            pass
+    return count
 
 
 def _dir_size(directory: Path) -> int:
-    return sum(f.stat().st_size for f in directory.rglob("*") if f.is_file())
+    total = 0
+    for f in directory.rglob("*"):
+        try:
+            if f.is_file():
+                total += f.stat().st_size
+        except OSError:
+            pass
+    return total
 
 
 def create_snapshot(
@@ -125,25 +139,40 @@ def create_snapshot(
         port = source.get("port", 22)
         key = source.get("key")
         strict_host_checking = source.get("strict_host_checking", False)
-        host_key_opt = "StrictHostKeyChecking=yes" if strict_host_checking else "StrictHostKeyChecking=no"
-        ssh_opts = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10",
-                    "-o", host_key_opt,
-                    "-p", str(port)]
+        host_key_opt = (
+            "StrictHostKeyChecking=yes"
+            if strict_host_checking
+            else "StrictHostKeyChecking=no"
+        )
+        ssh_opts = [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=10",
+            "-o",
+            host_key_opt,
+            "-p",
+            str(port),
+        ]
         if key:
             ssh_opts += ["-i", str(resolve_path(key))]
         src_arg = f"{user}@{host}:{source['path'].rstrip('/')}/"
         ssh_prefix = ["-e", " ".join(ssh_opts)]
 
-    cmd = ["rsync", "-a", "--delete", "--timeout=300",
-           f"--exclude-from={excl_file}"]
+    cmd = ["rsync", "-a", "--delete", "--timeout=300", f"--exclude-from={excl_file}"]
     if ssh_prefix:
         cmd += ssh_prefix
     if link_dest:
         cmd += [f"--link-dest={link_dest}"]
     cmd += [src_arg, str(snapshot_dir) + "/"]
 
-    log.info("[%s] creating snapshot %s%s", name, ts,
-             " (incremental)" if link_dest else " (full)")
+    log.info(
+        "[%s] creating snapshot %s%s",
+        name,
+        ts,
+        " (incremental)" if link_dest else " (full)",
+    )
 
     error_msg: Optional[str] = None
     try:
@@ -161,6 +190,7 @@ def create_snapshot(
     # Remove failed/empty snapshot
     if error_msg:
         import shutil
+
         try:
             shutil.rmtree(snapshot_dir)
         except OSError:
@@ -168,6 +198,7 @@ def create_snapshot(
 
     try:
         import os
+
         os.unlink(excl_file)
     except OSError:
         pass
