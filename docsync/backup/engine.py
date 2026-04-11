@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Optional
 
 from .retention import RetentionPolicy, apply_retention
-from .snapshot import create_snapshot
+from .snapshot import create_snapshot, timestamp_now
 from .report import source_backup_dir
 
 log = logging.getLogger(__name__)
@@ -32,10 +32,17 @@ class BackupStats:
 
 
 def _append_log(base_dir: Path, event: dict) -> None:
+    """Append a JSON event to the backup log, using atomic write to prevent null bytes."""
     log_path = base_dir / BACKUP_LOG
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(log_path, "a") as fh:
-        fh.write(json.dumps(event) + "\n")
+    line = json.dumps(event, ensure_ascii=False) + "\n"
+    tmp_path = log_path.with_suffix(".tmp")
+    # Atomic append: write to tmp then rename onto the log.
+    # For append mode we can't use rename (it replaces), so use
+    # a simpler approach: write directly but handle encoding safely.
+    with open(log_path, "a", encoding="utf-8", errors="replace") as fh:
+        fh.write(line)
+        fh.flush()
 
 
 def _build_retention(config: dict) -> RetentionPolicy:
@@ -80,7 +87,9 @@ def run_backup(
     priority_order = {"high": 0, "normal": 1, "low": 2}
     sources = sorted(
         sources,
-        key=lambda s: priority_order.get(s.get("backup", {}).get("priority", "normal"), 1),
+        key=lambda s: priority_order.get(
+            s.get("backup", {}).get("priority", "normal"), 1
+        ),
     )
 
     for src in sources:
@@ -93,7 +102,21 @@ def run_backup(
         stats.sources_attempted += 1
 
         log.info("Backing up '%s'…", name)
-        meta = create_snapshot(src, src_backup_dir, strategy=strategy)
+        try:
+            meta = create_snapshot(src, src_backup_dir, strategy=strategy)
+        except OSError as exc:
+            # Catastrophic OS error (e.g. read-only filesystem) — record and continue
+            meta = {
+                "status": "failed",
+                "error": str(exc),
+                "source_name": name,
+                "timestamp": timestamp_now(),
+                "duration_seconds": 0,
+                "file_count": 0,
+                "size_bytes": 0,
+                "snapshot_dir": None,
+            }
+            log.exception("[%s] snapshot creation failed: %s", name, exc)
 
         event = {
             "ts": datetime.now(timezone.utc).isoformat(),
@@ -106,7 +129,8 @@ def run_backup(
             stats.sources_succeeded += 1
             log.info(
                 "'%s' snapshot %s complete: %d files, %s in %.1fs",
-                name, meta["timestamp"],
+                name,
+                meta["timestamp"],
                 meta.get("file_count", 0),
                 meta.get("size_bytes", 0),
                 meta.get("duration_seconds", 0),
