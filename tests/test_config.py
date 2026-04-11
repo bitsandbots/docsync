@@ -17,8 +17,8 @@ from docsync.config import (
     validate_config,
 )
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def write_yaml(tmp_path: Path, data: dict | str) -> Path:
     """Write a YAML config to a temp file and return the path."""
@@ -41,6 +41,7 @@ MINIMAL_CONFIG = {
 
 
 # ── load_config ───────────────────────────────────────────────────────────────
+
 
 class TestLoadConfig:
     def test_loads_valid_yaml(self, tmp_path):
@@ -68,6 +69,7 @@ class TestLoadConfig:
 
 # ── validate_config ───────────────────────────────────────────────────────────
 
+
 class TestValidateConfig:
     def test_minimal_valid_config(self):
         result = validate_config(MINIMAL_CONFIG)
@@ -80,13 +82,19 @@ class TestValidateConfig:
         assert any("output_dir" in e for e in result.errors)
 
     def test_invalid_backup_strategy(self):
-        config = {**MINIMAL_CONFIG, "backup": {"enabled": True, "base_dir": "/tmp/bak", "strategy": "magic"}}
+        config = {
+            **MINIMAL_CONFIG,
+            "backup": {"enabled": True, "base_dir": "/tmp/bak", "strategy": "magic"},
+        }
         result = validate_config(config)
         assert not result.ok()
         assert any("strategy" in e for e in result.errors)
 
     def test_invalid_backup_compression(self):
-        config = {**MINIMAL_CONFIG, "backup": {"enabled": True, "base_dir": "/tmp/bak", "compression": "lz4"}}
+        config = {
+            **MINIMAL_CONFIG,
+            "backup": {"enabled": True, "base_dir": "/tmp/bak", "compression": "lz4"},
+        }
         result = validate_config(config)
         assert not result.ok()
         assert any("compression" in e for e in result.errors)
@@ -109,36 +117,52 @@ class TestValidateConfig:
         assert any("type" in e for e in result.errors)
 
     def test_source_invalid_type(self):
-        config = {**MINIMAL_CONFIG, "sources": [{"name": "X", "path": "/tmp", "type": "ftp"}]}
+        config = {
+            **MINIMAL_CONFIG,
+            "sources": [{"name": "X", "path": "/tmp", "type": "ftp"}],
+        }
         result = validate_config(config)
         assert not result.ok()
 
     def test_remote_source_missing_host(self):
-        config = {**MINIMAL_CONFIG, "sources": [
-            {"name": "X", "type": "remote", "path": "/opt/x", "user": "pi"}
-        ]}
+        config = {
+            **MINIMAL_CONFIG,
+            "sources": [
+                {"name": "X", "type": "remote", "path": "/opt/x", "user": "pi"}
+            ],
+        }
         result = validate_config(config)
         assert not result.ok()
         assert any("host" in e for e in result.errors)
 
     def test_source_backup_invalid_priority(self):
-        config = {**MINIMAL_CONFIG, "sources": [
-            {
-                "name": "X", "type": "local", "path": "/tmp",
-                "backup": {"priority": "ultra"},
-            }
-        ]}
+        config = {
+            **MINIMAL_CONFIG,
+            "sources": [
+                {
+                    "name": "X",
+                    "type": "local",
+                    "path": "/tmp",
+                    "backup": {"priority": "ultra"},
+                }
+            ],
+        }
         result = validate_config(config)
         assert not result.ok()
         assert any("priority" in e for e in result.errors)
 
     def test_include_db_without_db_block(self):
-        config = {**MINIMAL_CONFIG, "sources": [
-            {
-                "name": "X", "type": "local", "path": "/tmp",
-                "backup": {"include_db": True},
-            }
-        ]}
+        config = {
+            **MINIMAL_CONFIG,
+            "sources": [
+                {
+                    "name": "X",
+                    "type": "local",
+                    "path": "/tmp",
+                    "backup": {"include_db": True},
+                }
+            ],
+        }
         result = validate_config(config)
         assert not result.ok()
         assert any("include_db" in e for e in result.errors)
@@ -149,29 +173,66 @@ class TestValidateConfig:
         assert any("sources" in w for w in result.warnings)
 
     def test_overlapping_local_sources(self, tmp_path):
-        config = {**MINIMAL_CONFIG, "sources": [
-            {"name": "A", "type": "local", "path": str(tmp_path)},
-            {"name": "B", "type": "local", "path": str(tmp_path)},
-        ]}
+        config = {
+            **MINIMAL_CONFIG,
+            "sources": [
+                {"name": "A", "type": "local", "path": str(tmp_path)},
+                {"name": "B", "type": "local", "path": str(tmp_path)},
+            ],
+        }
         result = validate_config(config)
         assert any("Overlapping" in w for w in result.warnings)
+
+    def test_duplicate_source_names_errors(self, tmp_path):
+        config = {
+            **MINIMAL_CONFIG,
+            "sources": [
+                {"name": "docs", "type": "local", "path": str(tmp_path / "a")},
+                {"name": "docs", "type": "local", "path": str(tmp_path / "b")},
+            ],
+        }
+        result = validate_config(config)
+        assert not result.ok()
+        assert any("duplicate source name" in e for e in result.errors)
+
+    def test_unique_source_names_passes(self, tmp_path):
+        config = {
+            **MINIMAL_CONFIG,
+            "sources": [
+                {"name": "docs-a", "type": "local", "path": str(tmp_path / "a")},
+                {"name": "docs-b", "type": "local", "path": str(tmp_path / "b")},
+            ],
+        }
+        result = validate_config(config)
+        assert not any("duplicate" in e for e in result.errors)
 
 
 # ── check_local_paths ─────────────────────────────────────────────────────────
 
+
 class TestCheckLocalPaths:
     def test_existing_path_passes(self, tmp_path):
-        config = {**MINIMAL_CONFIG, "sources": [
-            {"name": "X", "type": "local", "path": str(tmp_path)},
-        ]}
+        config = {
+            **MINIMAL_CONFIG,
+            "sources": [
+                {"name": "X", "type": "local", "path": str(tmp_path)},
+            ],
+        }
         result = ValidationResult()
         check_local_paths(config, result)
         assert result.ok()
 
     def test_missing_path_errors(self, tmp_path):
-        config = {**MINIMAL_CONFIG, "sources": [
-            {"name": "X", "type": "local", "path": str(tmp_path / "does-not-exist")},
-        ]}
+        config = {
+            **MINIMAL_CONFIG,
+            "sources": [
+                {
+                    "name": "X",
+                    "type": "local",
+                    "path": str(tmp_path / "does-not-exist"),
+                },
+            ],
+        }
         result = ValidationResult()
         check_local_paths(config, result)
         assert not result.ok()
@@ -180,24 +241,31 @@ class TestCheckLocalPaths:
     def test_file_not_dir_errors(self, tmp_path):
         f = tmp_path / "file.txt"
         f.write_text("hello")
-        config = {**MINIMAL_CONFIG, "sources": [
-            {"name": "X", "type": "local", "path": str(f)},
-        ]}
+        config = {
+            **MINIMAL_CONFIG,
+            "sources": [
+                {"name": "X", "type": "local", "path": str(f)},
+            ],
+        }
         result = ValidationResult()
         check_local_paths(config, result)
         assert not result.ok()
         assert any("not a directory" in e for e in result.errors)
 
     def test_remote_sources_skipped(self, tmp_path):
-        config = {**MINIMAL_CONFIG, "sources": [
-            {"name": "R", "type": "remote", "path": "/nonexistent/path"},
-        ]}
+        config = {
+            **MINIMAL_CONFIG,
+            "sources": [
+                {"name": "R", "type": "remote", "path": "/nonexistent/path"},
+            ],
+        }
         result = ValidationResult()
         check_local_paths(config, result)
         assert result.ok()
 
 
 # ── check_backup_base_dir ─────────────────────────────────────────────────────
+
 
 class TestCheckBackupBaseDir:
     def test_existing_writable_dir(self, tmp_path):
@@ -207,7 +275,9 @@ class TestCheckBackupBaseDir:
         assert result.ok()
 
     def test_nonexistent_dir_warns(self, tmp_path):
-        config = {"backup": {"enabled": True, "base_dir": str(tmp_path / "new-backup-dir")}}
+        config = {
+            "backup": {"enabled": True, "base_dir": str(tmp_path / "new-backup-dir")}
+        }
         result = ValidationResult()
         check_backup_base_dir(config, result)
         assert result.ok()  # warning, not error

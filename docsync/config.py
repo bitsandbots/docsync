@@ -9,7 +9,6 @@ from typing import Any, Optional
 
 import yaml
 
-
 # ── Defaults ─────────────────────────────────────────────────────────────────
 
 DEFAULT_CONFIG_PATH = Path("~/.config/docsync/docsync.yaml").expanduser()
@@ -29,6 +28,7 @@ CRON_RE = re.compile(
 
 
 # ── Error collection ──────────────────────────────────────────────────────────
+
 
 class ConfigError(Exception):
     """Raised when the config file has validation errors."""
@@ -51,6 +51,7 @@ class ValidationResult:
 
 # ── Schema helpers ────────────────────────────────────────────────────────────
 
+
 def _require(d: dict, key: str, section: str, result: ValidationResult) -> Any:
     """Return d[key] or record an error if missing."""
     if key not in d:
@@ -69,6 +70,7 @@ def _resolve_path(p: str) -> Path:
 
 # ── Per-section validators ────────────────────────────────────────────────────
 
+
 def _validate_site(site: dict, result: ValidationResult) -> None:
     _require(site, "output_dir", "site", result)
     _require(site, "base_url", "site", result)
@@ -76,9 +78,7 @@ def _validate_site(site: dict, result: ValidationResult) -> None:
 
 def _validate_sync(sync: dict, result: ValidationResult) -> None:
     if "schedule" in sync and not _valid_cron(sync["schedule"]):
-        result.add_error(
-            f"[sync] invalid cron expression: '{sync['schedule']}'"
-        )
+        result.add_error(f"[sync] invalid cron expression: '{sync['schedule']}'")
 
 
 def _validate_backup_global(backup: dict, result: ValidationResult) -> None:
@@ -102,20 +102,18 @@ def _validate_backup_global(backup: dict, result: ValidationResult) -> None:
         )
 
     if "schedule" in backup and not _valid_cron(backup["schedule"]):
-        result.add_error(
-            f"[backup] invalid cron expression: '{backup['schedule']}'"
-        )
+        result.add_error(f"[backup] invalid cron expression: '{backup['schedule']}'")
 
     retention = backup.get("retention", {})
     for key in ("daily", "weekly", "monthly"):
         val = retention.get(key)
         if val is not None and (not isinstance(val, int) or val < 0):
-            result.add_error(
-                f"[backup.retention.{key}] must be a non-negative integer"
-            )
+            result.add_error(f"[backup.retention.{key}] must be a non-negative integer")
 
 
-def _validate_source_backup(src_backup: dict, source_name: str, result: ValidationResult) -> None:
+def _validate_source_backup(
+    src_backup: dict, source_name: str, result: ValidationResult
+) -> None:
     priority = src_backup.get("priority", "normal")
     if priority not in VALID_PRIORITIES:
         result.add_error(
@@ -167,6 +165,23 @@ def _validate_source(src: dict, idx: int, result: ValidationResult) -> None:
         _validate_source_backup(src["backup"], name, result)
 
 
+def _check_duplicate_source_names(
+    sources: list[dict], result: ValidationResult
+) -> None:
+    """Flag duplicate source names as an error — they cause manifest key collisions
+    and silently merge nav entries, leading to data loss."""
+    seen: dict[str, int] = {}
+    for i, src in enumerate(sources):
+        name = src.get("name", f"<source[{i}]>")
+        if name in seen:
+            result.add_error(
+                f"[sources] duplicate source name '{name}' "
+                f"(also defined at index {seen[name]})"
+            )
+        else:
+            seen[name] = i
+
+
 def _check_overlapping_sources(sources: list[dict], result: ValidationResult) -> None:
     paths: dict[str, str] = {}
     for src in sources:
@@ -185,6 +200,7 @@ def _check_overlapping_sources(sources: list[dict], result: ValidationResult) ->
 
 
 # ── Runtime checks (connectivity, filesystem) ─────────────────────────────────
+
 
 def check_local_paths(config: dict, result: ValidationResult) -> None:
     """Verify local source paths exist on the filesystem."""
@@ -216,9 +232,7 @@ def check_backup_base_dir(config: dict, result: ValidationResult) -> None:
     base_dir = _resolve_path(base_dir_str)
     if base_dir.exists():
         if not os.access(base_dir, os.W_OK):
-            result.add_error(
-                f"[backup.base_dir] directory is not writable: {base_dir}"
-            )
+            result.add_error(f"[backup.base_dir] directory is not writable: {base_dir}")
     else:
         # Check if the parent is writable so we could create it
         parent = base_dir.parent
@@ -248,14 +262,22 @@ def check_ssh_connectivity(config: dict, result: ValidationResult) -> None:
         if not host or not user:
             continue  # schema error already recorded
 
-        host_key_opt = "StrictHostKeyChecking=yes" if strict_host_checking else "StrictHostKeyChecking=no"
+        host_key_opt = (
+            "StrictHostKeyChecking=yes"
+            if strict_host_checking
+            else "StrictHostKeyChecking=no"
+        )
 
         cmd = [
             "ssh",
-            "-o", "BatchMode=yes",
-            "-o", "ConnectTimeout=5",
-            "-o", host_key_opt,
-            "-p", str(port),
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=5",
+            "-o",
+            host_key_opt,
+            "-p",
+            str(port),
         ]
         if key:
             cmd += ["-i", str(_resolve_path(key))]
@@ -282,6 +304,7 @@ def check_ssh_connectivity(config: dict, result: ValidationResult) -> None:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
+
 def load_config(path: Optional[Path] = None) -> dict:
     """Load and return the raw config dict from docsync.yaml.
 
@@ -302,7 +325,9 @@ def load_config(path: Optional[Path] = None) -> dict:
         raise ConfigError(f"Cannot read config file {config_path}: {exc}") from exc
 
     if not isinstance(data, dict):
-        raise ConfigError(f"Config file must be a YAML mapping, got: {type(data).__name__}")
+        raise ConfigError(
+            f"Config file must be a YAML mapping, got: {type(data).__name__}"
+        )
 
     return data
 
@@ -333,6 +358,7 @@ def validate_config(config: dict) -> ValidationResult:
     else:
         for i, src in enumerate(sources):
             _validate_source(src, i, result)
+        _check_duplicate_source_names(sources, result)
         _check_overlapping_sources(sources, result)
 
     return result

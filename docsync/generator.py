@@ -98,6 +98,88 @@ class NavCategory:
 # ── Site context builder ───────────────────────────────────────────────────────
 
 
+def _dedup_source_slugs(sources: list[NavSource]) -> None:
+    """Ensure NavSource slugs are unique by appending numeric suffixes.
+
+    Two sources with names that slugify identically (e.g. "My Project" and
+    "my-project" both → "my-project") would overwrite each other's output
+    directory.  This mutates slug and index_url in-place to prevent that.
+    """
+    seen: dict[str, int] = {}
+    for src in sources:
+        base = src.slug
+        if base in seen:
+            seen[base] += 1
+            old_slug = src.slug
+            src.slug = f"{base}-{seen[base]}"
+            src.index_url = f"{_slugify(src.category)}/{src.slug}/index.html"
+            # Patch NavDoc URLs already built with the old slug so nav links
+            # stay consistent with where _gen_doc_page will actually write files.
+            for doc in src.docs:
+                doc.url = doc.url.replace(f"/{old_slug}/", f"/{src.slug}/", 1)
+            log.warning(
+                "Source slug collision: '%s' → '%s' (renamed to avoid overwrite)",
+                src.name,
+                src.slug,
+            )
+        else:
+            seen[base] = 0
+
+
+def _dedup_doc_urls(docs: list[NavDoc]) -> None:
+    """Ensure NavDoc URLs are unique within a source by appending suffixes.
+
+    _path_slug is designed to be collision-resistant, but edge cases like
+    long filenames that truncate to the same suffix could still collide.
+    """
+    seen: dict[str, int] = {}
+    for doc in docs:
+        url = doc.url
+        if url in seen:
+            seen[url] += 1
+            # Replace .html suffix with -N.html
+            stem = url.rsplit(".html", 1)[0]
+            doc.url = f"{stem}-{seen[url]}.html"
+            log.warning("Doc URL collision: '%s' renamed to '%s'", url, doc.url)
+        else:
+            seen[url] = 0
+
+
+def _dedup_doc_path_slugs(
+    nav_source: NavSource, docs: list[ParsedDoc]
+) -> dict[str, str]:
+    """Build a mapping of rel_path → deduplicated output path for docs.
+
+    Returns a dict mapping each doc's rel_path to its final relative output
+    path (e.g. ``"general/my-project/guide.html"``).  If two docs within
+    the same source produce the same ``_path_slug``, a numeric suffix is
+    appended to disambiguate.
+    """
+    cat_slug = _slugify(nav_source.category)
+    src_slug = nav_source.slug
+    prefix = f"{cat_slug}/{src_slug}/"
+
+    result: dict[str, str] = {}
+    seen: dict[str, int] = {}
+    for doc in docs:
+        slug = _path_slug(doc.rel_path)
+        rel_path = f"{prefix}{slug}.html"
+        if rel_path in seen:
+            seen[rel_path] += 1
+            slug = f"{slug}-{seen[rel_path]}"
+            rel_path = f"{prefix}{slug}.html"
+            log.warning(
+                "Doc path collision: '%s' → '%s' for source '%s'",
+                doc.rel_path,
+                rel_path,
+                nav_source.name,
+            )
+        else:
+            seen[rel_path] = 0
+        result[doc.rel_path] = rel_path
+    return result
+
+
 def _build_nav(
     config: dict,
     docs_by_source: dict[str, list[ParsedDoc]],
@@ -125,6 +207,8 @@ def _build_nav(
             for d in source_docs_sorted
         ]
 
+        _dedup_doc_urls(nav_docs)
+
         nav_source = NavSource(
             name=name,
             slug=slug,
@@ -142,6 +226,10 @@ def _build_nav(
         if cat_name not in categories:
             categories[cat_name] = NavCategory(name=cat_name)
         categories[cat_name].sources.append(nav_source)
+
+    # Deduplicate source slugs across all categories
+    all_sources = [s for c in categories.values() for s in c.sources]
+    _dedup_source_slugs(all_sources)
 
     return list(categories.values())
 
@@ -258,18 +346,12 @@ class SiteGenerator:
         ctx["page_title"] = "Recent Updates"
         updates = []
         for doc in (recent_docs or [])[:50]:
-            cat_slug = _slugify(
-                next(
-                    (
-                        c.name
-                        for c in self._nav
-                        for s in c.sources
-                        if s.name == doc.source_name
-                    ),
-                    "misc",
-                )
+            nav_src = next(
+                (s for c in self._nav for s in c.sources if s.name == doc.source_name),
+                None,
             )
-            src_slug = _slugify(doc.source_name)
+            cat_slug = _slugify(nav_src.category if nav_src else "misc")
+            src_slug = nav_src.slug if nav_src else _slugify(doc.source_name)
             updates.append(
                 {
                     "title": doc.title,
@@ -395,7 +477,10 @@ class SiteGenerator:
         return pages
 
     def _gen_project_page(
-        self, nav_source: NavSource, source_docs: list[ParsedDoc]
+        self,
+        nav_source: NavSource,
+        source_docs: list[ParsedDoc],
+        doc_path_map: Optional[dict[str, str]] = None,
     ) -> None:
         cat_slug = _slugify(nav_source.category)
         src_slug = nav_source.slug
@@ -406,7 +491,10 @@ class SiteGenerator:
             {
                 "title": d.title,
                 "description": d.description,
-                "url": f"{cat_slug}/{src_slug}/{_path_slug(d.rel_path)}.html",
+                "url": (doc_path_map or {}).get(
+                    d.rel_path,
+                    f"{cat_slug}/{src_slug}/{_path_slug(d.rel_path)}.html",
+                ),
                 "tags": d.tags,
                 "rel_path": d.rel_path,
             }
@@ -443,11 +531,13 @@ class SiteGenerator:
         nav_source: NavSource,
         prev_doc: Optional[ParsedDoc],
         next_doc: Optional[ParsedDoc],
+        doc_path_map: Optional[dict[str, str]] = None,
     ) -> str:
         """Generate one doc page; returns the relative output path."""
         cat_slug = _slugify(nav_source.category)
         src_slug = nav_source.slug
-        rel_out = f"{cat_slug}/{src_slug}/{_path_slug(doc.rel_path)}.html"
+        default_path = f"{cat_slug}/{src_slug}/{_path_slug(doc.rel_path)}.html"
+        rel_out = (doc_path_map or {}).get(doc.rel_path, default_path)
         root_path = "../../"
 
         def nav_entry(d: Optional[ParsedDoc]) -> Optional[dict]:
@@ -530,7 +620,11 @@ class SiteGenerator:
                     source_docs, key=lambda d: (d.order, d.title)
                 )
 
-                self._gen_project_page(nav_source, source_docs_sorted)
+                # Deduplicate doc output paths within this source to prevent
+                # file overwrites from _path_slug collisions (e.g. truncation).
+                doc_path_map = _dedup_doc_path_slugs(nav_source, source_docs_sorted)
+
+                self._gen_project_page(nav_source, source_docs_sorted, doc_path_map)
                 pages += 1
 
                 for i, doc in enumerate(source_docs_sorted):
@@ -544,7 +638,7 @@ class SiteGenerator:
                         if i < len(source_docs_sorted) - 1
                         else None
                     )
-                    self._gen_doc_page(doc, nav_source, prev_d, next_d)
+                    self._gen_doc_page(doc, nav_source, prev_d, next_d, doc_path_map)
                     pages += 1
 
         log.info("Site generated: %d pages → %s", pages, self._output_dir)

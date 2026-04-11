@@ -209,7 +209,7 @@ IOSchedulingPriority=7
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=$CACHE_DIR $LOG_DIR $CONFIG_DIR
+ReadWritePaths=$CACHE_DIR $LOG_DIR $CONFIG_DIR $DEFAULT_HOME/backups
 PrivateTmp=true
 
 [Install]
