@@ -47,6 +47,7 @@ Thumbs.db
 *.log.*
 
 # Scratch files
-*-command-message*.txt
+*.txt
+!requirements.txt
 session-ses_*.md
 .remember/
