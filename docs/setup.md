@@ -5,18 +5,22 @@
 ### Quick Install
 
 ```bash
-cd /home/coreconduit/docsync
+git clone https://github.com/coreconduit/docsync.git
+cd docsync
 sudo bash install.sh
 ```
 
-### Manual Install
+The install script:
+1. Installs the Python package (`pip install -e .`)
+2. Creates systemd services (sync timer, backup timer, web server)
+3. Creates directories (`/var/log/docsync`, `/var/www/docsync`, `~/.config/docsync`, `~/.cache/docsync`)
+4. Copies example config if not present
+5. Optionally configures Apache vhost (http://docsync.local)
+
+### Skip Apache Setup
 
 ```bash
-# Install Python package
-sudo pip3 install /home/coreconduit/docsync --break-system-packages
-
-# Verify installation
-docsync --version
+sudo bash install.sh --no-apache
 ```
 
 ### Uninstall
@@ -24,6 +28,8 @@ docsync --version
 ```bash
 sudo bash install.sh --uninstall
 ```
+
+Removes systemd services and log directory. Preserves config and site output.
 
 ## Post-Installation Setup
 
@@ -90,7 +96,7 @@ docsync serve --port 8484
 sudo systemctl start docsync-web
 ```
 
-Browse to `http://localhost:8484` to view your documentation site.
+Browse to `http://localhost:8484` or `http://docsync.local` (if Apache configured) to view your documentation site.
 
 ## Remote Source Setup
 
@@ -127,7 +133,43 @@ docsync check
 
 The check command will verify SSH connectivity to all remote sources.
 
-## Systemd Service Management
+## Systemd Services
+
+The `install.sh` script creates three systemd units:
+
+| Unit | Type | Purpose | Schedule |
+|------|------|---------|----------|
+| `docsync-sync.timer` | Timer | Sync docs every 4 hours | OnBootSec=5min, OnUnitActiveSec=4h |
+| `docsync-backup.timer` | Timer | Run backups nightly | OnCalendar=*-*-* 02:00:00 |
+| `docsync-web.service` | Service | Flask web server | Started manually |
+
+### Service Commands
+
+```bash
+# Check status
+systemctl status docsync-sync.timer
+systemctl status docsync-backup.timer
+systemctl status docsync-web
+
+# Manual trigger
+systemctl start docsync-sync.service    # Run sync now
+systemctl start docsync-backup.service  # Run backup now
+
+# Enable/disable timers
+systemctl enable --now docsync-sync.timer
+systemctl disable --now docsync-sync.timer
+
+# View logs
+tail -f /var/log/docsync/sync.log
+tail -f /var/log/docsync/backup.log
+journalctl -u docsync-web -f
+```
+
+### Timer Details
+
+- **Sync timer**: Runs 5 minutes after boot, then every 4 hours. Uses `Persistent=true` so missed runs execute on next boot.
+- **Backup timer**: Runs nightly at 02:00 with 5-minute randomized delay. `Persistent=true` ensures missed backups run.
+- **Web service**: Not started by default. Start manually with `systemctl start docsync-web`.
 
 ### Check Service Status
 

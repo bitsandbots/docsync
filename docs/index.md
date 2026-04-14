@@ -64,6 +64,7 @@ Browse to `http://localhost:8484` to view your documentation site.
 - **License**: MIT
 - **Author**: CoreConduit
 - **Python**: 3.11+
+- **Repo**: https://github.com/coreconduit/docsync
 
 ## Contact
 

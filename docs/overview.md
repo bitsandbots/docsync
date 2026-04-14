@@ -87,19 +87,18 @@ docsync backup list SOURCE_NAME
 
 ## Installation
 
-Install via pip (Python 3.11+ required):
-
-```bash
-sudo pip3 install /home/coreconduit/docsync --break-system-packages
-```
-
-Or clone and install from source:
+Install via the install script (Python 3.11+ required):
 
 ```bash
 git clone https://github.com/coreconduit/docsync.git
 cd docsync
-sudo bash install.sh
+sudo bash install.sh          # Full install with Apache vhost
+sudo bash install.sh --no-apache  # Skip Apache setup
 ```
+
+This creates systemd services for automatic sync/backup and a web server.
+
+See [Setup & Usage](setup.md) for detailed installation and configuration steps.
 
 ## Configuration
 
