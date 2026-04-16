@@ -31,28 +31,458 @@ backup:
     webhook_url: ""              # optional: ntfy/Gotify URL
 
 sources:
-  - name: "My Project"
+  # ── Primary Projects ───────────────────────────────────
+  - name: "Inventory System"
     type: local
-    path: "/home/user/projects/my-project"
+    path: "/home/user/projects/inventory"
+    include:
+      - "docs/**/*.md"
+      - "README.md"
+    exclude:
+      - "vendor/**"
+      - "node_modules/**"
+      - ".git/**"
+    category: "Applications"
+    icon: "database"
+    backup:
+      enabled: true
+      include_all: false
+      include:
+        - "docs/**"
+        - "src/**/*.php"
+        - "config/**"
+      exclude:
+        - "vendor/**"
+        - "node_modules/**"
+        - ".git/**"
+      priority: "high"
+
+  - name: "RPI Monitor"
+    type: local
+    path: "/home/user/projects/rpi-monitor"
     include:
       - "docs/**/*.md"
       - "README.md"
     exclude:
       - "node_modules/**"
       - ".git/**"
-    category: "Projects"
+    category: "Tools"
     icon: "server"
     backup:
       enabled: true
       include_all: true
       exclude:
         - "node_modules/**"
-        - ".git/objects/**"
+        - ".git/**"
         - "__pycache__/**"
-        - "*.pyc"
-        - ".venv/**"
-        - "build/**"
-      priority: "normal"         # high | normal | low
+      priority: "normal"
+
+  - name: "RPI Sync"
+    type: local
+    path: "/home/user/projects/rpi-sync"
+    include:
+      - "docs/**/*.md"
+      - "README.md"
+    exclude:
+      - ".git/**"
+    category: "Tools"
+    icon: "sync"
+    backup:
+      enabled: true
+      include_all: true
+      exclude:
+        - ".git/**"
+        - "__pycache__/**"
+      priority: "normal"
+
+  - name: "DocSync"
+    type: local
+    path: "/home/user/projects/docsync"
+    include:
+      - "docs/**/*.md"
+      - "README.md"
+    exclude:
+      - ".git/**"
+    category: "Tools"
+    icon: "book"
+    backup:
+      enabled: true
+      include_all: true
+      exclude:
+        - ".git/**"
+        - "__pycache__/**"
+        - ".pytest_cache/**"
+        - "*.egg-info/**"
+      priority: "normal"
+
+  - name: "Flow Analyzer"
+    type: local
+    path: "/home/user/projects/flow-analyzer"
+    include:
+      - "docs/**/*.md"
+      - "README.md"
+    exclude:
+      - ".git/**"
+      - "node_modules/**"
+    category: "Tools"
+    icon: "chart"
+    backup:
+      enabled: true
+      include_all: true
+      exclude:
+        - ".git/**"
+        - "node_modules/**"
+      priority: "normal"
+
+  - name: "RAG Chatbot"
+    type: local
+    path: "/home/user/projects/rag-chatbot"
+    include:
+      - "docs/**/*.md"
+      - "README.md"
+    exclude:
+      - ".git/**"
+      - "node_modules/**"
+    category: "Applications"
+    icon: "message"
+    backup:
+      enabled: true
+      include_all: true
+      exclude:
+        - ".git/**"
+        - "node_modules/**"
+      priority: "normal"
+
+  - name: "Inventory Test Harness"
+    type: local
+    path: "/home/user/projects/inventory-test-harness"
+    include:
+      - "docs/**/*.md"
+      - "README.md"
+    exclude:
+      - ".git/**"
+    category: "Testing"
+    icon: "flask"
+    backup:
+      enabled: true
+      include_all: true
+      exclude:
+        - ".git/**"
+        - "__pycache__/**"
+      priority: "low"
+
+  - name: "Claude Configuration"
+    type: local
+    path: "/home/user/projects/coreconduit-claude-harness"
+    include:
+      - "docs/**/*.md"
+      - "README.md"
+      - "**/*.md"
+    exclude:
+      - ".git/**"
+    category: "Tools"
+    icon: "terminal"
+    backup:
+      enabled: true
+      include_all: true
+      exclude:
+        - ".git/**"
+        - "node_modules/**"
+      priority: "normal"
+
+  - name: "Claude Backups"
+    type: local
+    path: "/home/user/projects/.claude-backups"
+    include:
+      - "**/*.md"
+    exclude:
+      - ".git/**"
+    category: "Configuration"
+    icon: "folder"
+    backup:
+      enabled: true
+      include_all: true
+      exclude:
+        - ".git/**"
+      priority: "low"
+
+  - name: "Code Review"
+    type: local
+    path: "/home/user/projects/codereview"
+    include:
+      - "docs/**/*.md"
+      - "README.md"
+      - "CLAUDE.md"
+      - "*.md"
+    exclude:
+      - ".git/**"
+      - "node_modules/**"
+      - "__pycache__/**"
+      - ".pytest_cache/**"
+    category: "Tools"
+    icon: "code"
+    backup:
+      enabled: true
+      include_all: true
+      exclude:
+        - ".git/**"
+        - "node_modules/**"
+        - "__pycache__/**"
+        - ".pytest_cache/**"
+        - "dist/**"
+      priority: "normal"
+
+  - name: "RPI Clippy"
+    type: local
+    path: "/home/user/projects/rpi-clippy"
+    include:
+      - "README.md"
+      - "CLAUDE.md"
+      - "LICENSE.md"
+    exclude:
+      - ".git/**"
+      - "node_modules/**"
+    category: "Applications"
+    icon: "clipboard"
+    backup:
+      enabled: true
+      include_all: false
+      include:
+        - "*.py"
+        - "*.md"
+        - "assets/**"
+      exclude:
+        - ".git/**"
+        - "node_modules/**"
+        - "*.txt"
+        - "session-*.md"
+      priority: "normal"
+
+  - name: "SiteEdit"
+    type: local
+    path: "/home/user/projects/siteedit"
+    include:
+      - "docs/**/*.md"
+      - "README.md"
+      - "CLAUDE.md"
+      - "AGENTS.md"
+      - ".claude/**/*.md"
+    exclude:
+      - ".git/**"
+      - "node_modules/**"
+      - "__pycache__/**"
+      - ".pytest_cache/**"
+      - "session-*.md"
+    category: "Tools"
+    icon: "edit"
+    backup:
+      enabled: true
+      include_all: true
+      exclude:
+        - ".git/**"
+        - "node_modules/**"
+        - "__pycache__/**"
+        - ".pytest_cache/**"
+        - "session-*.md"
+      priority: "normal"
+
+  - name: "FileForge"
+    type: local
+    path: "/home/user/projects/fileforge"
+    include:
+      - "README.md"
+      - "docs/**/*.md"
+    exclude:
+      - ".git/**"
+      - "__pycache__/**"
+      - ".pytest_cache/**"
+      - "venv/**"
+      - "*.egg-info/**"
+    category: "Tools"
+    icon: "folder"
+    backup:
+      enabled: true
+      include_all: true
+      exclude:
+        - ".git/**"
+        - "__pycache__/**"
+        - ".pytest_cache/**"
+        - "venv/**"
+        - "*.egg-info/**"
+        - ".coverage"
+      priority: "normal"
+
+  - name: "RPI Fleet"
+    type: local
+    path: "/home/user/projects/rpi-fleet"
+    include:
+      - "README.md"
+      - "docs/**/*.md"
+      - "*.md"
+    exclude:
+      - ".git/**"
+      - "__pycache__/**"
+      - ".pytest_cache/**"
+      - "venv/**"
+      - "*.egg-info/**"
+    category: "Tools"
+    icon: "server"
+    backup:
+      enabled: true
+      include_all: true
+      exclude:
+        - ".git/**"
+        - "__pycache__/**"
+        - ".pytest_cache/**"
+        - "venv/**"
+        - "*.egg-info/**"
+      priority: "normal"
+
+  - name: "TechLounge Review"
+    type: local
+    path: "/home/user/projects/techlounge-review-plan"
+    include:
+      - "README.md"
+      - "*.md"
+    exclude:
+      - ".git/**"
+    category: "Projects"
+    icon: "document"
+    backup:
+      enabled: true
+      include_all: true
+      exclude:
+        - ".git/**"
+      priority: "low"
+
+  - name: "Reference App"
+    type: local
+    path: "/home/user/projects/coreconduit-reference-app"
+    include:
+      - "README.md"
+      - "docs/**/*.md"
+      - "CLAUDE.md"
+    exclude:
+      - ".git/**"
+      - "node_modules/**"
+      - "__pycache__/**"
+    category: "Applications"
+    icon: "app"
+    backup:
+      enabled: true
+      include_all: true
+      exclude:
+        - ".git/**"
+        - "node_modules/**"
+        - "__pycache__/**"
+      priority: "normal"
+
+  - name: "UI Kit"
+    type: local
+    path: "/home/user/projects/coreconduit-ui-kit"
+    include:
+      - "README.md"
+      - "docs/**/*.md"
+    exclude:
+      - ".git/**"
+      - "node_modules/**"
+      - "__pycache__/**"
+    category: "Tools"
+    icon: "palette"
+    backup:
+      enabled: true
+      include_all: true
+      exclude:
+        - ".git/**"
+        - "node_modules/**"
+        - "__pycache__/**"
+      priority: "normal"
+
+  - name: "Frontend Migration"
+    type: local
+    path: "/home/user/projects/coreconduit-frontend-migration"
+    include:
+      - "README.md"
+      - "docs/**/*.md"
+      - "CLAUDE.md"
+    exclude:
+      - ".git/**"
+      - "node_modules/**"
+      - "__pycache__/**"
+    category: "Development"
+    icon: "code"
+    backup:
+      enabled: true
+      include_all: true
+      exclude:
+        - ".git/**"
+        - "node_modules/**"
+        - "__pycache__/**"
+      priority: "normal"
+
+  - name: "MCP Memory Service"
+    type: local
+    path: "/home/user/projects/mcp-memory-service"
+    include:
+      - "README.md"
+      - "docs/**/*.md"
+      - "*.py"
+    exclude:
+      - ".git/**"
+      - "node_modules/**"
+      - "__pycache__/**"
+      - "venv/**"
+    category: "Services"
+    icon: "database"
+    backup:
+      enabled: true
+      include_all: true
+      exclude:
+        - ".git/**"
+        - "node_modules/**"
+        - "__pycache__/**"
+        - "venv/**"
+      priority: "normal"
+
+  - name: "Wiki Notebook"
+    type: local
+    path: "/home/user/projects/wiki-notebook"
+    include:
+      - "README.md"
+      - "CLAUDE.md"
+      - "AGENTS.md"
+      - "docs/**/*.md"
+    exclude:
+      - ".git/**"
+      - "session-*.md"
+      - ".pytest_cache/**"
+    category: "Tools"
+    icon: "note"
+    backup:
+      enabled: true
+      include_all: true
+      exclude:
+        - ".git/**"
+        - "session-*.md"
+        - ".pytest_cache/**"
+      priority: "normal"
+
+  - name: "Wiki Notebook Plan"
+    type: local
+    path: "/home/user/projects/wiki-notebook-plan"
+    include:
+      - "README.md"
+      - "*.md"
+    exclude:
+      - ".git/**"
+    category: "Projects"
+    icon: "document"
+    backup:
+      enabled: true
+      include_all: true
+      exclude:
+        - ".git/**"
+      priority: "low"
 
   # Remote source example
   # - name: "Remote Project"
