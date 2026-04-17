@@ -84,11 +84,48 @@ def _count_files(directory: Path) -> int:
 
 
 def _dir_size(directory: Path) -> int:
+    """Return apparent logical size of the snapshot in bytes.
+
+    Hardlinked files (unchanged from a previous snapshot) are counted at their
+    full logical size — this represents the data *accessible* in the snapshot,
+    not the additional disk space consumed by it.
+    """
     total = 0
     for f in directory.rglob("*"):
         try:
             if f.is_file():
                 total += f.stat().st_size
+        except OSError:
+            pass
+    return total
+
+
+def _new_bytes(snapshot_dir: Path, link_dest: Optional[Path]) -> int:
+    """Return bytes of files that are NOT hardlinked from *link_dest*.
+
+    This is the actual new disk space consumed by an incremental snapshot.
+    For a full snapshot (link_dest is None) this equals _dir_size().
+    """
+    if link_dest is None:
+        return _dir_size(snapshot_dir)
+
+    # Collect inodes present in the previous snapshot to identify hardlinks.
+    prev_inodes: set[int] = set()
+    if link_dest.exists():
+        for f in link_dest.rglob("*"):
+            try:
+                if f.is_file():
+                    prev_inodes.add(f.stat().st_ino)
+            except OSError:
+                pass
+
+    total = 0
+    for f in snapshot_dir.rglob("*"):
+        try:
+            if f.is_file():
+                st = f.stat()
+                if st.st_ino not in prev_inodes:
+                    total += st.st_size
         except OSError:
             pass
     return total
@@ -107,8 +144,16 @@ def create_snapshot(
     name = source["name"]
     src_type = source.get("type", "local")
     ts = timestamp_now()
-    snapshot_dir = source_backup_dir / ts
     source_backup_dir.mkdir(parents=True, exist_ok=True)
+
+    # Guard against same-second timestamp collision: append a counter so the
+    # new snapshot always gets a unique directory distinct from link_dest.
+    snapshot_dir = source_backup_dir / ts
+    _col = 1
+    while snapshot_dir.exists():
+        snapshot_dir = source_backup_dir / f"{ts}_{_col}"
+        _col += 1
+    ts = snapshot_dir.name
 
     t0 = time.monotonic()
 
@@ -213,6 +258,7 @@ def create_snapshot(
         "duration_seconds": round(duration, 2),
         "file_count": _count_files(snapshot_dir) if not error_msg else 0,
         "size_bytes": _dir_size(snapshot_dir) if not error_msg else 0,
+        "new_bytes": _new_bytes(snapshot_dir, link_dest) if not error_msg else 0,
         "snapshot_dir": str(snapshot_dir) if not error_msg else None,
     }
 
