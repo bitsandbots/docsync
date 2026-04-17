@@ -3,7 +3,11 @@
    Fonts: Exo 2 · Plus Jakarta Sans · IBM Plex Mono
 */
 
-@import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap');
+/* Self-hosted fonts — no external CDN */
+@font-face { font-family:"Exo 2"; src:url("fonts/exo-2-latin-700-normal.woff2") format("woff2"); font-weight:700; font-display:swap; }
+@font-face { font-family:"Plus Jakarta Sans"; src:url("fonts/plus-jakarta-sans-latin-400-normal.woff2") format("woff2"); font-weight:400; font-display:swap; }
+@font-face { font-family:"Plus Jakarta Sans"; src:url("fonts/plus-jakarta-sans-latin-600-normal.woff2") format("woff2"); font-weight:600; font-display:swap; }
+@font-face { font-family:"IBM Plex Mono"; src:url("fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2"); font-weight:400; font-display:swap; }
 
 /* ── Reset ─────────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -89,16 +93,27 @@ a:hover { color: var(--cc-blue-600); text-decoration: underline; }
 }
 
 .site-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   font-family: var(--cc-font-display);
   font-size: 1.1rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: .02em;
   color: var(--cc-text-on-dark);
   white-space: nowrap;
   text-decoration: none;
 }
-.site-logo .accent { color: var(--cc-orange-400); }
-.site-logo:hover { text-decoration: none; }
+.site-logo:hover { text-decoration: none; color: #fff; }
+.site-logo .logo-mark {
+  width: 32px; height: 32px;
+  background: var(--cc-blue-500, #2b7de9);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.site-logo .cc-inner { font-size: 0.8rem; font-weight: 800; color: #fff; letter-spacing: 0; }
+.site-logo .accent { color: var(--cc-orange-400, #e07018); }
 
 .header-search {
   flex: 1; max-width: 380px; margin-left: auto;
