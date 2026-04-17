@@ -163,6 +163,46 @@ class TestSiteGenerator:
         assert "Alpha" in content  # prev
         assert "Gamma" in content  # next
 
+    def test_prev_next_nav_links_resolve_to_existing_files(self, tmp_path):
+        """Nav link hrefs must point to the file path, not a title-derived slug.
+
+        When a doc lives in a subdirectory, _path_slug produces 'subdir--filename'
+        but _slugify(title) would produce just 'title', breaking the link.
+        """
+        config = make_config(tmp_path)
+        docs = [
+            # title differs from path — this is the trigger for the bug
+            make_doc(title="Setup Guide", rel_path="intro/setup.md", order=1),
+            make_doc(title="Middle Page", rel_path="middle.md", order=2),
+            make_doc(title="Advanced Guide", rel_path="advanced/config.md", order=3),
+        ]
+        gen = SiteGenerator(config, docs)
+        gen.generate()
+
+        out = tmp_path / "out" / "projects" / "my-project"
+
+        # The middle doc is rendered; its prev/next links point at the other two
+        middle_page = out / "middle.html"
+        content = middle_page.read_text()
+
+        # Extract hrefs from the page-nav section
+        import re
+
+        hrefs = re.findall(r'class="(?:prev|next)"[^>]*href="([^"]+)"', content)
+        if not hrefs:
+            hrefs = re.findall(r'href="([^"]+)"[^>]*class="(?:prev|next)"', content)
+
+        assert hrefs, "No prev/next hrefs found in page-nav"
+
+        for href in hrefs:
+            # href is root-relative (starts with ../../); strip that prefix
+            rel = href.lstrip("./").lstrip("../").lstrip("../")
+            # Resolve from site root
+            linked_file = tmp_path / "out" / href.lstrip("/").replace("../../", "")
+            assert (
+                linked_file.exists()
+            ), f"Nav link href={href!r} points to a file that doesn't exist: {linked_file}"
+
     def test_toc_rendered_in_doc(self, tmp_path):
         config = make_config(tmp_path)
         docs = [

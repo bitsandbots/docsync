@@ -543,9 +543,10 @@ class SiteGenerator:
         def nav_entry(d: Optional[ParsedDoc]) -> Optional[dict]:
             if d is None:
                 return None
+            default = f"{cat_slug}/{src_slug}/{_path_slug(d.rel_path)}.html"
             return {
                 "title": d.title,
-                "url": f"{cat_slug}/{src_slug}/{_slugify(d.title, truncate=True)}.html",
+                "url": (doc_path_map or {}).get(d.rel_path, default),
             }
 
         ctx = self._base_ctx(
