@@ -26,3 +26,7 @@ where = ["."]
 
 [tool.setuptools.package-data]
 docsync = ["templates/**/*", "static/**/*"]
+
+[tool.pytest.ini_options]
+base_url = "http://localhost:8484"
+markers = ["e2e: end-to-end browser tests (require docsync-web running)"]
