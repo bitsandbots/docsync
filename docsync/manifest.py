@@ -103,6 +103,11 @@ class Manifest:
         prefix = f"{source_name}/"
         self._data = {k: v for k, v in self._data.items() if not k.startswith(prefix)}
 
+    def remove_file(self, source_name: str, rel_path: str) -> None:
+        """Remove a single file entry from the manifest."""
+        key = self._key(source_name, rel_path)
+        self._data.pop(key, None)
+
     def source_keys(self, source_name: str) -> list[str]:
         """Return all rel_paths known for a source."""
         prefix = f"{source_name}/"

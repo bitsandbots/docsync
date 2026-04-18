@@ -75,6 +75,8 @@ def run_sync(
         # Update manifest — store doc metadata for changed files so the nav
         # can be rebuilt from the manifest without re-reading files next run.
         parsed_by_key = {f"{d.source_name}/{d.rel_path}": d for d in docs}
+        collected_paths = {f.rel_path for f in result.files}
+
         for f in result.files:
             key = f"{f.source_name}/{f.rel_path}"
             parsed = parsed_by_key.get(key)
@@ -90,6 +92,16 @@ def run_sync(
                 )
             else:
                 manifest.update(f.source_name, f.rel_path, f.abs_path)
+
+        # Clean up manifest entries for deleted files (files in manifest but not collected)
+        for rel_path in manifest.source_keys(result.source_name):
+            if rel_path not in collected_paths:
+                manifest.remove_file(result.source_name, rel_path)
+                log.debug(
+                    "[%s] removed deleted file from manifest: %s",
+                    result.source_name,
+                    rel_path,
+                )
 
     manifest.save()
 

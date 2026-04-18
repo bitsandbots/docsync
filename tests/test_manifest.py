@@ -68,7 +68,15 @@ def test_update_stores_doc_metadata(tmp_path):
     m = Manifest(tmp_path / "manifest.json")
     f = tmp_path / "guide.md"
     f.write_text("# Guide")
-    m.update("proj", "guide.md", f, title="My Guide", description="A guide", order=2, tags=["howto"])
+    m.update(
+        "proj",
+        "guide.md",
+        f,
+        title="My Guide",
+        description="A guide",
+        order=2,
+        tags=["howto"],
+    )
     m.save()
 
     m2 = Manifest(tmp_path / "manifest.json")
@@ -88,3 +96,29 @@ def test_update_without_metadata_still_works(tmp_path):
     assert "hash" in entry
     assert "synced_at" in entry
     assert "title" not in entry
+
+
+def test_remove_file_deletes_entry(tmp_path):
+    m = Manifest(tmp_path / "manifest.json")
+    f = tmp_path / "doc.md"
+    f.write_text("content")
+    m.update("proj", "doc.md", f)
+    assert m.source_keys("proj") == ["doc.md"]
+    m.remove_file("proj", "doc.md")
+    assert m.source_keys("proj") == []
+
+
+def test_remove_file_isolation(tmp_path):
+    m = Manifest(tmp_path / "manifest.json")
+    fa = tmp_path / "a.md"
+    fb = tmp_path / "b.md"
+    fa.write_text("a")
+    fb.write_text("b")
+    m.update("proj", "a.md", fa)
+    m.update("proj", "b.md", fb)
+    assert m.source_keys("proj") == ["a.md", "b.md"]
+    m.remove_file("proj", "a.md")
+    assert m.source_keys("proj") == ["b.md"]
+    # Removing non-existent file is safe
+    m.remove_file("proj", "nonexistent.md")
+    assert m.source_keys("proj") == ["b.md"]
