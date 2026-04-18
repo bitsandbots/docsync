@@ -7,7 +7,7 @@ import datetime
 import logging
 import re
 import shutil
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace as dc_replace
 from pathlib import Path
 from typing import Any, Optional
 
@@ -547,13 +547,20 @@ class SiteGenerator:
 
         Used when a nav-only doc (html_body=="") needs its output file
         regenerated (e.g. to refresh prev/next links) without losing prose.
+
+        Uses rfind for the boundary so prose that happens to contain the
+        boundary string inside a <code> block doesn't truncate the extraction.
         """
-        m = re.search(
-            r'<div class="prose">\s*(.*?)\s*<!-- Prev/Next',
-            html,
-            re.DOTALL,
-        )
-        return m.group(1).strip() if m else ""
+        _OPEN = '<div class="prose">'
+        _BOUNDARY = "<!-- Prev/Next navigation -->"
+        start = html.find(_OPEN)
+        if start == -1:
+            return ""
+        prose_start = start + len(_OPEN)
+        end = html.rfind(_BOUNDARY, prose_start)
+        if end == -1:
+            return ""
+        return html[prose_start:end].strip()
 
     def _gen_doc_page(
         self,
@@ -584,20 +591,20 @@ class SiteGenerator:
                     existing = out_path.read_text(encoding="utf-8", errors="replace")
                     restored = self._extract_prose_from_html(existing)
                     if restored:
-                        doc = ParsedDoc(
-                            source_name=doc.source_name,
-                            rel_path=doc.rel_path,
-                            abs_path=doc.abs_path,
-                            title=doc.title,
-                            description=doc.description,
-                            tags=doc.tags,
-                            order=doc.order,
-                            html_body=restored,
-                            toc=doc.toc,
-                            raw_front_matter=doc.raw_front_matter,
+                        doc = dc_replace(doc, html_body=restored)
+                    else:
+                        log.warning(
+                            "nav-only restore: prose boundary not found in %s "
+                            "— rendering with empty body (template mismatch?)",
+                            out_path,
                         )
-                except OSError:
-                    pass  # can't read existing file — generate with empty prose
+                except OSError as exc:
+                    log.warning(
+                        "nav-only restore: cannot read %s (%s) "
+                        "— rendering with empty body",
+                        out_path,
+                        exc,
+                    )
 
         def nav_entry(d: Optional[ParsedDoc]) -> Optional[dict]:
             if d is None:

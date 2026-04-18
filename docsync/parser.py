@@ -190,8 +190,10 @@ def load_nav_docs_from_manifest(
     by previous parse runs.  Falls back to a filename-derived title for older
     entries that predate metadata storage.
 
-    Returns docs with ``html_body=""`` — the generator skips HTML page
-    regeneration for these, preserving existing output files unchanged.
+    Returns docs with ``html_body=""`` — the generator treats these as
+    nav-only: it reads the existing output file to restore any previously
+    rendered prose before re-rendering, so prev/next links refresh without
+    losing content.
     """
     sources = {s["name"]: s for s in config.get("sources", [])}
     docs: list[ParsedDoc] = []

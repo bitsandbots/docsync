@@ -59,10 +59,13 @@ class TestHomePage:
     def test_footer_has_last_synced(self, home: Page):
         footer = home.locator("footer.site-footer")
         text = footer.inner_text()
-        assert "synced" in text.lower() or len(text.strip()) > 0
+        assert (
+            "synced" in text.lower()
+        ), f"Footer missing 'synced' timestamp text: '{text[:80]}'"
 
     def test_no_console_errors(self, page: Page, base_url: str):
         errors = []
+        # Listener must be attached BEFORE goto so load-time errors are captured.
         page.on(
             "console", lambda msg: errors.append(msg) if msg.type == "error" else None
         )

@@ -24,7 +24,7 @@ class TestThemeToggle:
     def test_toggle_has_accessible_label(self, home: Page):
         btn = home.locator("#theme-toggle")
         label = btn.get_attribute("aria-label")
-        assert label and "dark" in label.lower() or "theme" in label.lower()
+        assert label and ("dark" in label.lower() or "theme" in label.lower())
 
     def test_clicking_toggle_changes_theme(self, home: Page):
         btn = home.locator("#theme-toggle")
@@ -40,11 +40,13 @@ class TestThemeToggle:
         )
         assert initial != after, "Theme should change after toggle click"
 
-    def test_theme_written_to_localstorage(self, home: Page):
-        btn = home.locator("#theme-toggle")
-        btn.click()
-        home.wait_for_timeout(100)
-        stored = home.evaluate("localStorage.getItem('docsync-theme')")
+    def test_theme_written_to_localstorage(self, page: Page, base_url: str):
+        page.goto(base_url)
+        page.wait_for_load_state("load")
+        page.evaluate("localStorage.clear()")  # start clean
+        page.locator("#theme-toggle").click()
+        page.wait_for_timeout(100)
+        stored = page.evaluate("localStorage.getItem('docsync-theme')")
         assert stored in ("dark", "light"), f"Expected dark or light, got: {stored!r}"
 
     def test_saved_dark_theme_applied_on_load(self, page: Page, base_url: str):
@@ -58,6 +60,7 @@ class TestThemeToggle:
             "|| document.body.className"
         )
         assert "dark" in str(theme)
+        page.evaluate("localStorage.clear()")  # clean up so other tests start fresh
 
     def test_saved_light_theme_applied_on_load(self, page: Page, base_url: str):
         page.goto(base_url)
@@ -69,6 +72,7 @@ class TestThemeToggle:
             "|| document.body.className"
         )
         assert "dark" not in str(theme)
+        page.evaluate("localStorage.clear()")
 
     def test_sun_moon_icons_swap(self, home: Page):
         moon = home.locator("#theme-icon-moon")

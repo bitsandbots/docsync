@@ -24,7 +24,18 @@
         });
         callback();
       })
-      .catch(function (e) { console.warn('DocSync search: failed to load index', e); });
+      .catch(function (e) {
+        console.warn('DocSync search: failed to load index', e);
+        var resultsEl = document.getElementById('search-results') ||
+                        document.getElementById('results');
+        if (resultsEl) {
+          var p = document.createElement('p');
+          p.style.color = 'var(--text-muted)';
+          p.textContent = 'Search index unavailable. Try running: docsync sync';
+          resultsEl.textContent = '';
+          resultsEl.appendChild(p);
+        }
+      });
   }
 
   function renderResults(results, container) {
