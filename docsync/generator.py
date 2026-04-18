@@ -549,12 +549,20 @@ class SiteGenerator:
         next_doc: Optional[ParsedDoc],
         doc_path_map: Optional[dict[str, str]] = None,
     ) -> str:
-        """Generate one doc page; returns the relative output path."""
+        """Generate one doc page; returns the relative output path.
+
+        Nav-only docs (html_body == "") preserve the existing file on disk —
+        only docs with parsed content are (re)written.
+        """
         cat_slug = _slugify(nav_source.category)
         src_slug = nav_source.slug
         default_path = f"{cat_slug}/{src_slug}/{_path_slug(doc.rel_path)}.html"
         rel_out = (doc_path_map or {}).get(doc.rel_path, default_path)
         root_path = "../../"
+
+        # Skip regeneration for nav-only sentinel docs (unchanged files).
+        if not doc.html_body and (self._output_dir / rel_out).exists():
+            return rel_out
 
         def nav_entry(d: Optional[ParsedDoc]) -> Optional[dict]:
             if d is None:

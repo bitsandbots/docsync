@@ -35,7 +35,7 @@ def browser_type_launch_args():
 def home(page: Page, base_url: str) -> Page:
     """Home page."""
     page.goto(base_url)
-    page.wait_for_load_state("networkidle")
+    page.wait_for_load_state("load")
     return page
 
 
@@ -43,7 +43,7 @@ def home(page: Page, base_url: str) -> Page:
 def inventory_index(page: Page, base_url: str) -> Page:
     """Inventory System source index — has all three nav tiers (README + Docs + Additional)."""
     page.goto(f"{base_url}/applications/inventory-system/index.html")
-    page.wait_for_load_state("networkidle")
+    page.wait_for_load_state("load")
     return page
 
 
@@ -51,7 +51,7 @@ def inventory_index(page: Page, base_url: str) -> Page:
 def docsync_index(page: Page, base_url: str) -> Page:
     """DocSync source index — Docs tier only, no root README."""
     page.goto(f"{base_url}/tools/docsync/index.html")
-    page.wait_for_load_state("networkidle")
+    page.wait_for_load_state("load")
     return page
 
 
@@ -59,7 +59,7 @@ def docsync_index(page: Page, base_url: str) -> Page:
 def arch_doc(page: Page, base_url: str) -> Page:
     """DocSync architecture doc — has prev/next nav and breadcrumbs."""
     page.goto(f"{base_url}/tools/docsync/docs--architecture.html")
-    page.wait_for_load_state("networkidle")
+    page.wait_for_load_state("load")
     return page
 
 
@@ -67,5 +67,5 @@ def arch_doc(page: Page, base_url: str) -> Page:
 def search_page(page: Page, base_url: str) -> Page:
     """Dedicated search page."""
     page.goto(f"{base_url}/search.html")
-    page.wait_for_load_state("networkidle")
+    page.wait_for_load_state("load")
     return page

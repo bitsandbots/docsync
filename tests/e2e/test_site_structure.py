@@ -27,25 +27,25 @@ class TestStaticPages:
     @pytest.mark.parametrize("name,path", STATIC_PAGES)
     def test_page_loads_with_main_content(self, page: Page, base_url: str, name, path):
         page.goto(f"{base_url}/{path}")
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("load")
         expect(page.locator("main")).to_be_visible()
 
     @pytest.mark.parametrize("name,path", STATIC_PAGES)
     def test_page_has_site_header(self, page: Page, base_url: str, name, path):
         page.goto(f"{base_url}/{path}")
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("load")
         expect(page.locator("header.site-header")).to_be_visible()
 
     @pytest.mark.parametrize("name,path", STATIC_PAGES)
     def test_page_has_sidebar(self, page: Page, base_url: str, name, path):
         page.goto(f"{base_url}/{path}")
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("load")
         expect(page.locator("aside.sidebar")).to_be_visible()
 
     @pytest.mark.parametrize("name,path", STATIC_PAGES)
     def test_page_has_footer(self, page: Page, base_url: str, name, path):
         page.goto(f"{base_url}/{path}")
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("load")
         expect(page.locator("footer.site-footer")).to_be_visible()
 
 
@@ -67,7 +67,7 @@ class TestHomePage:
             "console", lambda msg: errors.append(msg) if msg.type == "error" else None
         )
         page.goto(base_url)
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("load")
         # Filter out known benign errors (e.g. favicon 404)
         real_errors = [e for e in errors if "favicon" not in e.text.lower()]
         assert real_errors == [], f"Console errors: {[e.text for e in real_errors]}"
@@ -86,7 +86,7 @@ class TestSidebarLinkIntegrity:
     def test_all_source_index_links_resolve(self, page: Page, base_url: str):
         """Every source-level sidebar link (with icon) must return a loadable page."""
         page.goto(base_url)
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("load")
 
         source_links = page.locator("aside a.sidebar-link svg.icon ~ *").all()
         # Collect hrefs from parent anchors
@@ -124,32 +124,32 @@ class TestSidebarLinkIntegrity:
 class TestUpdatesPage:
     def test_updates_page_has_content(self, page: Page, base_url: str):
         page.goto(f"{base_url}/updates.html")
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("load")
         main = page.locator("main")
         expect(main).to_be_visible()
 
     def test_updates_active_in_sidebar(self, page: Page, base_url: str):
         page.goto(f"{base_url}/updates.html")
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("load")
         assert page.locator("aside a.sidebar-link.active").count() >= 1
 
 
 class TestBackupsPage:
     def test_backups_page_loads(self, page: Page, base_url: str):
         page.goto(f"{base_url}/backups.html")
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("load")
         expect(page.locator("main")).to_be_visible()
 
     def test_backups_active_in_sidebar(self, page: Page, base_url: str):
         page.goto(f"{base_url}/backups.html")
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("load")
         assert page.locator("aside a.sidebar-link.active").count() >= 1
 
 
 class TestAdminPage:
     def test_admin_page_loads(self, page: Page, base_url: str):
         page.goto(f"{base_url}/admin")
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("load")
         expect(page.locator("body")).to_be_visible()
 
     def test_no_console_errors_on_doc_page(self, arch_doc: Page):
@@ -158,7 +158,7 @@ class TestAdminPage:
             "console", lambda msg: errors.append(msg) if msg.type == "error" else None
         )
         arch_doc.reload()
-        arch_doc.wait_for_load_state("networkidle")
+        arch_doc.wait_for_load_state("load")
         real_errors = [e for e in errors if "favicon" not in e.text.lower()]
         assert (
             real_errors == []

@@ -130,19 +130,19 @@ class TestSourceIndexPage:
 class TestReadmePage:
     def test_readme_page_loads(self, page: Page, base_url: str):
         page.goto(f"{base_url}/applications/inventory-system/readme.html")
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("load")
         expect(page.locator("main")).to_be_visible()
 
     def test_readme_active_in_sidebar(self, page: Page, base_url: str):
         page.goto(f"{base_url}/applications/inventory-system/readme.html")
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("load")
         # The README link (bare link, not inside details) should be active
         readme_link = page.locator(".sidebar-project > a.sidebar-link.active")
         expect(readme_link).to_have_count(1)
 
     def test_readme_has_content(self, page: Page, base_url: str):
         page.goto(f"{base_url}/applications/inventory-system/readme.html")
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("load")
         main_text = page.locator("main").inner_text()
         assert (
             len(main_text.strip()) > 50

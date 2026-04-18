@@ -83,7 +83,7 @@
 }
 
 /* ── Base ───────────────────────────────────────────────────────────────────── */
-html { font-size: 16px; scroll-behavior: smooth; scroll-padding-top: 68px; }
+html { font-size: 16px; scroll-behavior: smooth; scroll-padding-top: 68px; overflow-x: hidden; }
 
 body {
   font-family: var(--cc-font-body);
@@ -1063,6 +1063,9 @@ a:hover { color: var(--cc-blue-600); text-decoration-thickness: 3px; }
   .backup-stats { grid-template-columns: repeat(4, 1fr); }
 
   .header-actions { display: none; }
+  .header-a11y-controls { display: none; }
+  .site-header { overflow: hidden; }
+  .header-search { min-width: 0; flex-shrink: 1; }
 
   /* Overlay behind open sidebar */
   .sidebar-overlay {

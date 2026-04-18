@@ -52,7 +52,7 @@ class TestThemeToggle:
         page.goto(base_url)
         page.evaluate("localStorage.setItem('docsync-theme', 'dark')")
         page.reload()
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("load")
         theme = page.evaluate(
             "document.documentElement.getAttribute('data-theme') "
             "|| document.body.className"
@@ -63,7 +63,7 @@ class TestThemeToggle:
         page.goto(base_url)
         page.evaluate("localStorage.setItem('docsync-theme', 'light')")
         page.reload()
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("load")
         theme = page.evaluate(
             "document.documentElement.getAttribute('data-theme') "
             "|| document.body.className"

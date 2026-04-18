@@ -161,7 +161,7 @@ class TestCollapsibleSections:
         """Toggle button is only shown at ≤700px — use mobile viewport."""
         page.set_viewport_size({"width": 480, "height": 800})
         page.goto(base_url)
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("load")
         toggle = page.locator("#sidebar-toggle")
         expect(toggle).to_be_visible()
 
@@ -169,7 +169,7 @@ class TestCollapsibleSections:
         """Clicking the toggle at mobile viewport does not raise an error."""
         page.set_viewport_size({"width": 480, "height": 800})
         page.goto(base_url)
-        page.wait_for_load_state("networkidle")
+        page.wait_for_load_state("load")
         toggle = page.locator("#sidebar-toggle")
         expect(toggle).to_be_visible()
         toggle.click()
