@@ -629,10 +629,6 @@ class SiteGenerator:
                 pages += 1
 
                 for i, doc in enumerate(source_docs_sorted):
-                    if not doc.html_body:
-                        # Nav-only doc loaded from manifest metadata —
-                        # the existing HTML page is preserved as-is.
-                        continue
                     prev_d = source_docs_sorted[i - 1] if i > 0 else None
                     next_d = (
                         source_docs_sorted[i + 1]

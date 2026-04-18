@@ -301,16 +301,16 @@ def test_path_slug_unique_for_same_filename_different_dirs():
 
 
 class TestNavOnlyDocs:
-    def test_empty_body_doc_skips_html_generation(self, tmp_path):
+    def test_empty_body_doc_regenerates_with_updated_nav(self, tmp_path):
         config = make_config(tmp_path)
         nav_only = make_doc(html_body="")  # simulates load_nav_docs_from_manifest
         gen = SiteGenerator(config, [nav_only])
         pages = gen.generate()
 
-        # Nav-only doc is excluded from page count
+        # Nav-only doc IS regenerated with updated navigation (fixes missing links bug)
         doc_page = tmp_path / "out" / "projects" / "my-project" / "guide.html"
-        assert not doc_page.exists()
-        # But the project index IS generated (doc still shows in nav)
+        assert doc_page.exists()
+        # Project index also generated
         assert (tmp_path / "out" / "projects" / "my-project" / "index.html").exists()
 
     def test_mixed_full_and_nav_only_docs(self, tmp_path):
@@ -322,9 +322,9 @@ class TestNavOnlyDocs:
         gen = SiteGenerator(config, [full_doc, nav_doc])
         gen.generate()
 
-        # Only the full doc generates an HTML page
+        # Both full and nav-only docs generate HTML pages
         assert (tmp_path / "out" / "projects" / "my-project" / "full.html").exists()
-        assert not (tmp_path / "out" / "projects" / "my-project" / "nav.html").exists()
+        assert (tmp_path / "out" / "projects" / "my-project" / "nav.html").exists()
         # Both appear in the project index
         index_content = (
             tmp_path / "out" / "projects" / "my-project" / "index.html"
