@@ -541,6 +541,20 @@ class SiteGenerator:
             self._render("project.html", ctx),
         )
 
+    @staticmethod
+    def _extract_prose_from_html(html: str) -> str:
+        """Extract the prose body from a previously rendered doc page.
+
+        Used when a nav-only doc (html_body=="") needs its output file
+        regenerated (e.g. to refresh prev/next links) without losing prose.
+        """
+        m = re.search(
+            r'<div class="prose">\s*(.*?)\s*<!-- Prev/Next',
+            html,
+            re.DOTALL,
+        )
+        return m.group(1).strip() if m else ""
+
     def _gen_doc_page(
         self,
         doc: ParsedDoc,
@@ -551,8 +565,9 @@ class SiteGenerator:
     ) -> str:
         """Generate one doc page; returns the relative output path.
 
-        Nav-only docs (html_body == "") preserve the existing file on disk —
-        only docs with parsed content are (re)written.
+        For nav-only docs (html_body == ""), restore prose from the existing
+        output file so incremental syncs preserve content while refreshing
+        navigation links (prev/next, breadcrumbs).
         """
         cat_slug = _slugify(nav_source.category)
         src_slug = nav_source.slug
@@ -560,9 +575,29 @@ class SiteGenerator:
         rel_out = (doc_path_map or {}).get(doc.rel_path, default_path)
         root_path = "../../"
 
-        # Skip regeneration for nav-only sentinel docs (unchanged files).
-        if not doc.html_body and (self._output_dir / rel_out).exists():
-            return rel_out
+        # Nav-only sentinel: restore prose from disk so prev/next links refresh
+        # without wiping existing content.
+        if not doc.html_body:
+            out_path = self._output_dir / rel_out
+            if out_path.exists():
+                try:
+                    existing = out_path.read_text(encoding="utf-8", errors="replace")
+                    restored = self._extract_prose_from_html(existing)
+                    if restored:
+                        doc = ParsedDoc(
+                            source_name=doc.source_name,
+                            rel_path=doc.rel_path,
+                            abs_path=doc.abs_path,
+                            title=doc.title,
+                            description=doc.description,
+                            tags=doc.tags,
+                            order=doc.order,
+                            html_body=restored,
+                            toc=doc.toc,
+                            raw_front_matter=doc.raw_front_matter,
+                        )
+                except OSError:
+                    pass  # can't read existing file — generate with empty prose
 
         def nav_entry(d: Optional[ParsedDoc]) -> Optional[dict]:
             if d is None:
