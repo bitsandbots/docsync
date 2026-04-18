@@ -9,6 +9,9 @@
 </head>
 <body>
 
+<!-- ── Skip Link (SC 2.4.1) ──────────────────────────────────────────── -->
+<a href="#main" class="skip-link">Skip to main content</a>
+
 <!-- ── Header ─────────────────────────────────────────────────────────── -->
 <header class="site-header">
   <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">
@@ -38,18 +41,28 @@
     <input id="search-input" type="search" placeholder="Search docs…" autocomplete="off">
   </div>
 
-  <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">
-    <svg id="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-    </svg>
-    <svg id="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
-      <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/>
-      <line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/>
-      <line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-    </svg>
-  </button>
+  <div class="header-a11y-controls">
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode" aria-pressed="false">
+      <svg id="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+      <svg id="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+        <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/>
+        <line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/>
+        <line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+    </button>
+    <button class="a11y-toggle" id="btn-contrast" aria-label="Toggle high contrast" aria-pressed="false" title="High contrast mode">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/><path d="M12 2v20M2 12h20"/>
+      </svg>
+    </button>
+    <button class="a11y-toggle" id="btn-font" aria-label="Toggle dyslexia-friendly font" aria-pressed="false" title="Dyslexia-friendly font">
+      <svg viewBox="0 0 24 24" fill="currentColor"><text x="2" y="18" font-size="16" font-weight="bold">A</text></svg>
+    </button>
+  </div>
 </header>
 
 <!-- Mobile sidebar overlay -->
@@ -119,7 +132,7 @@
   </aside>
 
   <!-- Main -->
-  <main class="main">
+  <main class="main" id="main">
     <div class="page-content">
       {% block content %}{% endblock %}
     </div>
@@ -339,6 +352,51 @@
   });
 
   document.getElementById('btn-clear-log')?.addEventListener('click', clearLog);
+
+  // ── Accessibility Preferences ──────────────────────────────────────────────
+  function setA11yMode(attr, value) {
+    if (value && value !== 'default') {
+      html.setAttribute('data-' + attr, value);
+      localStorage.setItem('docsync-a11y-' + attr, value);
+    } else {
+      html.removeAttribute('data-' + attr);
+      localStorage.removeItem('docsync-a11y-' + attr);
+    }
+  }
+
+  function loadA11yPreferences() {
+    var contrast = localStorage.getItem('docsync-a11y-contrast');
+    var font = localStorage.getItem('docsync-a11y-font');
+    if (contrast) html.setAttribute('data-contrast', contrast);
+    if (font) html.setAttribute('data-font', font);
+    // Update button states
+    var btnContrast = document.getElementById('btn-contrast');
+    var btnFont = document.getElementById('btn-font');
+    if (btnContrast) btnContrast.setAttribute('aria-pressed', contrast === 'high' ? 'true' : 'false');
+    if (btnFont) btnFont.setAttribute('aria-pressed', font === 'legible' ? 'true' : 'false');
+  }
+
+  var btnContrast = document.getElementById('btn-contrast');
+  var btnFont = document.getElementById('btn-font');
+
+  if (btnContrast) {
+    btnContrast.addEventListener('click', function() {
+      var current = html.getAttribute('data-contrast') === 'high';
+      setA11yMode('contrast', current ? 'default' : 'high');
+      btnContrast.setAttribute('aria-pressed', current ? 'false' : 'true');
+    });
+  }
+
+  if (btnFont) {
+    btnFont.addEventListener('click', function() {
+      var current = html.getAttribute('data-font') === 'legible';
+      setA11yMode('font', current ? 'default' : 'legible');
+      btnFont.setAttribute('aria-pressed', current ? 'false' : 'true');
+    });
+  }
+
+  // Load saved preferences on page load
+  loadA11yPreferences();
 })();
 </script>
 </body>
