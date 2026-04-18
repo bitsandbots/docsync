@@ -59,7 +59,7 @@ The documentation pipeline runs in three stages: **collect → parse → generat
 
 **`parser.py`** — Extracts YAML front matter (`title`, `description`, `tags`, `order`) and renders markdown to HTML via markdown-it-py. Builds a table of contents from headings. Also handles code documentation extraction for Python, PHP, and C++. XSS is mitigated by setting `html: False` in the markdown-it renderer.
 
-**`generator.py`** — Jinja2 renders 11+ page types including per-doc pages, per-source indexes, a search page, an updates feed, and a backup dashboard. Navigation is built as a tree: `NavCategory → NavSource → NavDoc`. Templates live in `templates/`, static assets in `static/`.
+**`generator.py`** — Jinja2 renders 11+ page types including per-doc pages, per-source indexes, a search page, an updates feed, and a backup dashboard. Navigation is built as a tree: `NavCategory → NavSource → NavDoc`. Each `NavSource` carries three doc groups: `readme_doc` (pinned top), `primary_docs` (from `docs/` folder), and `additional_docs` (other root-level files). Templates live in `templates/`, static assets in `static/`.
 
 **Backup subsystem (`docsync/backup/`):**
 
