@@ -87,6 +87,9 @@ class NavSource:
     doc_count: int = 0
     last_synced: str = ""
     docs: list[NavDoc] = field(default_factory=list)
+    readme_doc: Optional[NavDoc] = None
+    primary_docs: list[NavDoc] = field(default_factory=list)
+    additional_docs: list[NavDoc] = field(default_factory=list)
 
 
 @dataclass
@@ -198,15 +201,25 @@ def _build_nav(
         source_docs = docs_by_source.get(name, [])
         source_docs_sorted = sorted(source_docs, key=lambda d: (d.order, d.title))
 
-        nav_docs = [
-            NavDoc(
+        readme_doc: Optional[NavDoc] = None
+        primary_docs: list[NavDoc] = []
+        additional_docs: list[NavDoc] = []
+
+        for d in source_docs_sorted:
+            nav_doc = NavDoc(
                 title=d.title,
                 url=f"{cat_slug}/{slug}/{_path_slug(d.rel_path)}.html",
                 description=d.description,
             )
-            for d in source_docs_sorted
-        ]
+            if d.rel_path.lower() == "readme.md":
+                readme_doc = nav_doc
+            elif d.rel_path.startswith("docs/"):
+                primary_docs.append(nav_doc)
+            else:
+                additional_docs.append(nav_doc)
 
+        # README first, then docs/, then everything else — dedup across all
+        nav_docs = ([readme_doc] if readme_doc else []) + primary_docs + additional_docs
         _dedup_doc_urls(nav_docs)
 
         nav_source = NavSource(
@@ -221,6 +234,9 @@ def _build_nav(
             doc_count=len(nav_docs),
             last_synced=sync_timestamp or "",
             docs=nav_docs,
+            readme_doc=readme_doc,
+            primary_docs=primary_docs,
+            additional_docs=additional_docs,
         )
 
         if cat_name not in categories:

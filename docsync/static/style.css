@@ -360,6 +360,22 @@ a:hover { color: var(--cc-blue-600); text-decoration-thickness: 3px; }
   color: var(--cc-orange-400);
 }
 
+.sidebar-additional { border: none; margin-top: .25rem; }
+.sidebar-additional-label {
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--cc-silver-500);
+  padding: .3rem 1.5rem;
+  cursor: pointer;
+  list-style: none;
+  opacity: .7;
+}
+.sidebar-additional-label:hover { opacity: 1; }
+.sidebar-additional > summary::-webkit-details-marker { display: none; }
+.sidebar-additional[open] .sidebar-additional-label { opacity: 1; }
+
 .sidebar-divider {
   height: 1px;
   background: var(--cc-navy-700);

@@ -119,11 +119,31 @@
       </a>
       {% if current_source == source.name and source.docs %}
       <div class="sidebar-project">
-        {% for doc in source.docs %}
-        <a href="{{ root_path }}{{ doc.url }}" class="sidebar-link{% if current_doc_url == doc.url %} active{% endif %}">
-          {{ doc.title }}
+        {% if source.readme_doc %}
+        <a href="{{ root_path }}{{ source.readme_doc.url }}" class="sidebar-link{% if current_doc_url == source.readme_doc.url %} active{% endif %}">
+          {{ source.readme_doc.title }}
         </a>
-        {% endfor %}
+        {% endif %}
+        {% if source.primary_docs %}
+        <details class="sidebar-additional"{% if source.primary_docs | selectattr('url', 'equalto', current_doc_url) | list %} open{% endif %}>
+          <summary class="sidebar-additional-label">Docs</summary>
+          {% for doc in source.primary_docs %}
+          <a href="{{ root_path }}{{ doc.url }}" class="sidebar-link{% if current_doc_url == doc.url %} active{% endif %}">
+            {{ doc.title }}
+          </a>
+          {% endfor %}
+        </details>
+        {% endif %}
+        {% if source.additional_docs %}
+        <details class="sidebar-additional"{% if source.additional_docs | selectattr('url', 'equalto', current_doc_url) | list %} open{% endif %}>
+          <summary class="sidebar-additional-label">Additional Docs</summary>
+          {% for doc in source.additional_docs %}
+          <a href="{{ root_path }}{{ doc.url }}" class="sidebar-link{% if current_doc_url == doc.url %} active{% endif %}">
+            {{ doc.title }}
+          </a>
+          {% endfor %}
+        </details>
+        {% endif %}
       </div>
       {% endif %}
       {% endfor %}

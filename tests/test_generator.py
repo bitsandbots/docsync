@@ -8,6 +8,7 @@ from docsync.generator import (
     SiteGenerator,
     NavDoc,
     NavSource,
+    _build_nav,
     _dedup_doc_path_slugs,
     _dedup_doc_urls,
     _dedup_source_slugs,
@@ -549,3 +550,89 @@ class TestDedupDocPathSlugs:
         # so they won't collide in practice. But test the dedup logic:
         path_map = _dedup_doc_path_slugs(nav_source, docs)
         assert "guide.md" not in path_map or True  # just verifying it returns a dict
+
+
+# ── Primary / additional doc split ────────────────────────────────────────────
+
+
+class TestPrimaryAdditionalDocSplit:
+    """README is pinned top; docs/ is primary; other root files are additional."""
+
+    def _config(self, name="My Project"):
+        return {
+            "sources": [
+                {
+                    "name": name,
+                    "type": "local",
+                    "path": "/tmp/p",
+                    "category": "General",
+                }
+            ]
+        }
+
+    def _make_doc(self, rel_path, title):
+        return make_doc(rel_path=rel_path, title=title, html_body="<p>x</p>")
+
+    def test_readme_elevated_to_readme_doc(self):
+        docs = {"My Project": [self._make_doc("README.md", "Readme")]}
+        cats = _build_nav(self._config(), docs)
+        src = cats[0].sources[0]
+        assert src.readme_doc is not None
+        assert src.readme_doc.title == "Readme"
+        assert src.primary_docs == []
+        assert src.additional_docs == []
+
+    def test_readme_case_insensitive(self):
+        docs = {"My Project": [self._make_doc("readme.md", "Readme")]}
+        cats = _build_nav(self._config(), docs)
+        src = cats[0].sources[0]
+        assert src.readme_doc is not None
+
+    def test_docs_folder_goes_to_primary(self):
+        docs = {"My Project": [self._make_doc("docs/guide.md", "Guide")]}
+        cats = _build_nav(self._config(), docs)
+        src = cats[0].sources[0]
+        assert src.readme_doc is None
+        assert len(src.primary_docs) == 1
+        assert src.primary_docs[0].title == "Guide"
+        assert src.additional_docs == []
+
+    def test_other_root_file_goes_to_additional(self):
+        docs = {"My Project": [self._make_doc("CLAUDE.md", "Claude Config")]}
+        cats = _build_nav(self._config(), docs)
+        src = cats[0].sources[0]
+        assert src.readme_doc is None
+        assert src.primary_docs == []
+        assert len(src.additional_docs) == 1
+        assert src.additional_docs[0].title == "Claude Config"
+
+    def test_three_way_split(self):
+        docs = {
+            "My Project": [
+                self._make_doc("docs/api.md", "API"),
+                self._make_doc("docs/setup.md", "Setup"),
+                self._make_doc("README.md", "Readme"),
+                self._make_doc("CLAUDE.md", "Claude Config"),
+            ]
+        }
+        cats = _build_nav(self._config(), docs)
+        src = cats[0].sources[0]
+        assert src.readme_doc.title == "Readme"
+        assert {d.title for d in src.primary_docs} == {"API", "Setup"}
+        assert {d.title for d in src.additional_docs} == {"Claude Config"}
+        assert src.doc_count == 4
+
+    def test_all_docs_in_combined_list(self):
+        """src.docs contains all docs in order: readme, primary, additional."""
+        docs = {
+            "My Project": [
+                self._make_doc("docs/guide.md", "Guide"),
+                self._make_doc("README.md", "Readme"),
+                self._make_doc("CLAUDE.md", "Claude Config"),
+            ]
+        }
+        cats = _build_nav(self._config(), docs)
+        src = cats[0].sources[0]
+        assert len(src.docs) == 3
+        assert src.doc_count == 3
+        assert src.docs[0].title == "Readme"  # README first
