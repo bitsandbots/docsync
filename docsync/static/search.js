@@ -70,10 +70,14 @@
       loadIndex(function () { doSearch(q); });
     }
 
+    var debounceTimer = null;
     pageInput.addEventListener('input', function () {
       var query = this.value.trim();
+      clearTimeout(debounceTimer);
       if (query.length < 2) { resultsEl.innerHTML = ''; return; }
-      loadIndex(function () { doSearch(query); });
+      debounceTimer = setTimeout(function () {
+        loadIndex(function () { doSearch(query); });
+      }, 200);
     });
 
     function doSearch(query) {
