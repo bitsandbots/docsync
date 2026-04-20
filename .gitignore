@@ -51,3 +51,9 @@ Thumbs.db
 !requirements.txt
 session-ses_*.md
 .remember/
+
+# Claude Code project settings
+.claude/
+
+# Linter cache
+.ruff_cache/
