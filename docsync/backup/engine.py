@@ -36,10 +36,7 @@ def _append_log(base_dir: Path, event: dict) -> None:
     log_path = base_dir / BACKUP_LOG
     log_path.parent.mkdir(parents=True, exist_ok=True)
     line = json.dumps(event, ensure_ascii=False) + "\n"
-    tmp_path = log_path.with_suffix(".tmp")
-    # Atomic append: write to tmp then rename onto the log.
-    # For append mode we can't use rename (it replaces), so use
-    # a simpler approach: write directly but handle encoding safely.
+    # Write directly with error handling for encoding safety.
     with open(log_path, "a", encoding="utf-8", errors="replace") as fh:
         fh.write(line)
         fh.flush()

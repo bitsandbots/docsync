@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import argparse
 import csv
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -263,7 +262,7 @@ Examples:
         print("\nNo sources added.")
 
     # Summary
-    print(f"\nSummary:")
+    print("\nSummary:")
     print(f"  Added:   {added}")
     print(f"  Skipped: {skipped}")
     print(f"  Failed:  {failed}")

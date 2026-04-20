@@ -20,7 +20,6 @@ def build_index(docs: list[ParsedDoc], nav_categories: list) -> list[dict]:
 
     Each entry has: id, title, body (plain text), tags, url.
     """
-    from .generator import _slugify
 
     # Build url lookup from nav
     url_map: dict[tuple[str, str], str] = {}

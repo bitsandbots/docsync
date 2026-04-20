@@ -7,7 +7,7 @@ Hardlinks mean deleting old snapshots only frees space for unique files.
 
 import logging
 import shutil
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import NamedTuple
 

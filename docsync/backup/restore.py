@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
-from .snapshot import list_snapshots, SNAPSHOT_META_FILE
+from .snapshot import SNAPSHOT_META_FILE
 
 log = logging.getLogger(__name__)
 

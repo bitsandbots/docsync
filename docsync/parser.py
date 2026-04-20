@@ -254,9 +254,6 @@ def extract_code_docs(
 
     for lang, lang_cfg in languages.items():
         pattern = lang_cfg.get("pattern", _CODE_DOC_PATTERNS.get(lang, ("", ""))[1])
-        files_glob = lang_cfg.get(
-            "files", _CODE_DOC_PATTERNS.get(lang, ("**/*", ""))[0]
-        )
 
         if not pattern:
             continue

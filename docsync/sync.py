@@ -4,11 +4,9 @@ import logging
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Optional
 
 from .collector import CollectResult, collect_all
-from .config import load_and_validate, ConfigError
 from .generator import generate_site
 from .manifest import Manifest
 from .parser import ParsedDoc, parse_files

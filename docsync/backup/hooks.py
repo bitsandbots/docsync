@@ -4,6 +4,7 @@ import logging
 import shlex
 import subprocess
 from pathlib import Path
+from typing import Optional
 
 from ..utils import resolve_path
 
@@ -15,7 +16,6 @@ def run_db_dump(source: dict, snapshot_dir: Path) -> Optional[str]:
 
     Returns None on success, error string on failure.
     """
-    from typing import Optional
     bk = source.get("backup", {})
     if not bk.get("include_db"):
         return None
@@ -23,7 +23,6 @@ def run_db_dump(source: dict, snapshot_dir: Path) -> Optional[str]:
     db_cfg = bk.get("db", {})
     dump_cmd = db_cfg.get("dump_command", "")
     db_name = db_cfg.get("name", "db")
-    db_type = db_cfg.get("type", "mysql")
 
     if not dump_cmd:
         return "include_db is true but no dump_command configured"
@@ -38,10 +37,22 @@ def run_db_dump(source: dict, snapshot_dir: Path) -> Optional[str]:
         port = source.get("port", 22)
         key = source.get("key")
         strict_host_checking = source.get("strict_host_checking", False)
-        host_key_opt = "StrictHostKeyChecking=yes" if strict_host_checking else "StrictHostKeyChecking=no"
-        ssh_cmd = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10",
-                   "-o", host_key_opt,
-                   "-p", str(port)]
+        host_key_opt = (
+            "StrictHostKeyChecking=yes"
+            if strict_host_checking
+            else "StrictHostKeyChecking=no"
+        )
+        ssh_cmd = [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=10",
+            "-o",
+            host_key_opt,
+            "-p",
+            str(port),
+        ]
         if key:
             ssh_cmd += ["-i", str(resolve_path(key))]
         ssh_cmd.append(f"{user}@{host}")
@@ -51,6 +62,7 @@ def run_db_dump(source: dict, snapshot_dir: Path) -> Optional[str]:
 
     try:
         import zstandard as zstd
+
         log.info("[%s] running DB dump: %s", source["name"], dump_cmd)
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         cctx = zstd.ZstdCompressor()
@@ -66,7 +78,9 @@ def run_db_dump(source: dict, snapshot_dir: Path) -> Optional[str]:
         out_file = snapshot_dir / f"{db_name}.{ext}"
         try:
             with open(out_file, "wb") as fh:
-                proc = subprocess.run(cmd, stdout=fh, stderr=subprocess.PIPE, timeout=120)
+                proc = subprocess.run(
+                    cmd, stdout=fh, stderr=subprocess.PIPE, timeout=120
+                )
             if proc.returncode != 0:
                 return proc.stderr.decode(errors="replace").strip()
         except subprocess.TimeoutExpired:
