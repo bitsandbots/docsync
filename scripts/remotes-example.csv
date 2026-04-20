@@ -1,0 +1,5 @@
+name,host,user,path,category,icon,ssh_key
+Web Server,192.168.1.10,pi,/var/www/web,Servers,server,~/.ssh/docsync_web
+Database Pi,192.168.1.11,pi,/opt/db-server,Servers,database,~/.ssh/docsync_db
+Home Automation,192.168.1.12,pi,/opt/homeassistant,Applications,home,~/.ssh/docsync_ha
+Dev Workstation,192.168.1.50,dev,/home/dev/projects,Workstations,desktop,~/.ssh/docsync_dev

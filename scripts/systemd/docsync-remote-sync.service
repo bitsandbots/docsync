@@ -1,0 +1,17 @@
+[Unit]
+Description=DocSync Remote Client — Push docs notification
+After=network.target
+
+[Service]
+Type=oneshot
+User=%I
+ExecStart=/bin/sh -c 'echo "Docs updated" > ~/.cache/docsync/sync.trigger'
+StandardOutput=journal
+StandardError=journal
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

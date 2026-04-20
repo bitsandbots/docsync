@@ -5,11 +5,20 @@ import sys
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 
-from flask import Flask, Response, jsonify, render_template, request, send_from_directory
+from flask import (
+    Flask,
+    Response,
+    jsonify,
+    render_template,
+    request,
+    send_from_directory,
+)
 from flask.helpers import stream_with_context
 
 
-def create_app(config: dict, output_dir: Path, config_path: Path | None = None) -> Flask:
+def create_app(
+    config: dict, output_dir: Path, config_path: Path | None = None
+) -> Flask:
     """Create and return the Flask application.
 
     Args:
@@ -20,10 +29,13 @@ def create_app(config: dict, output_dir: Path, config_path: Path | None = None) 
     app = Flask(__name__, template_folder="templates")
     app.config["OUTPUT_DIR"] = str(output_dir)
     app.config["DOCSYNC_CONFIG"] = str(config_path) if config_path else None
-    
+
     # Store initial state in app.config (reloaded via /api/reload)
     app.config["SOURCES"] = [s["name"] for s in config.get("sources", [])]
     app.config["SITE_TITLE"] = config.get("site", {}).get("title", "DocSync")
+    app.config["SITE_BASE_URL"] = config.get("site", {}).get(
+        "base_url", "http://localhost:8484"
+    )
     app.config["BACKUP_BASE_DIR"] = config.get("backup", {}).get("base_dir")
 
     # ── Helpers ───────────────────────────────────────────────────────────────
@@ -38,6 +50,7 @@ def create_app(config: dict, output_dir: Path, config_path: Path | None = None) 
 
     def _stream(args: list[str]) -> Response:
         """Run *args* as a subprocess and stream stdout+stderr as SSE."""
+
         def generate():
             proc = subprocess.Popen(args, stdout=PIPE, stderr=STDOUT, text=True)
             for line in proc.stdout:
@@ -72,6 +85,7 @@ def create_app(config: dict, output_dir: Path, config_path: Path | None = None) 
             "admin.html",
             sources=app.config["SOURCES"],
             site_title=app.config["SITE_TITLE"],
+            base_url=app.config["SITE_BASE_URL"],
         )
 
     # ── API: sync ─────────────────────────────────────────────────────────────
@@ -146,11 +160,13 @@ def create_app(config: dict, output_dir: Path, config_path: Path | None = None) 
             if latest_ts
             else None
         )
-        return jsonify({
-            "last_sync": last_sync,
-            "total_files": len(data),
-            "sources": src_counts,
-        })
+        return jsonify(
+            {
+                "last_sync": last_sync,
+                "total_files": len(data),
+                "sources": src_counts,
+            }
+        )
 
     # ── API: snapshot list (JSON) ─────────────────────────────────────────────
 
@@ -168,16 +184,18 @@ def create_app(config: dict, output_dir: Path, config_path: Path | None = None) 
             return jsonify([])
 
         snaps = snapshot_list(src_dir)
-        return jsonify([
-            {
-                "timestamp": s.get("timestamp", ""),
-                "ts_human": s.get("ts_human", ""),
-                "status": s.get("status", "unknown"),
-                "file_count": s.get("file_count", 0),
-                "size_human": s.get("size_human", "—"),
-            }
-            for s in snaps
-        ])
+        return jsonify(
+            [
+                {
+                    "timestamp": s.get("timestamp", ""),
+                    "ts_human": s.get("ts_human", ""),
+                    "status": s.get("status", "unknown"),
+                    "file_count": s.get("file_count", 0),
+                    "size_human": s.get("size_human", "—"),
+                }
+                for s in snaps
+            ]
+        )
 
     # ── Config editor ─────────────────────────────────────────────────────────
 
@@ -195,6 +213,7 @@ def create_app(config: dict, output_dir: Path, config_path: Path | None = None) 
     @app.route("/api/config")
     def api_config_get():
         import yaml
+
         cfg_path = _resolved_config_path()
         try:
             raw = cfg_path.read_text()
@@ -206,11 +225,14 @@ def create_app(config: dict, output_dir: Path, config_path: Path | None = None) 
             return jsonify({"error": f"YAML parse error: {exc}"}), 500
         except OSError as exc:
             return jsonify({"error": f"Cannot read config: {exc}"}), 500
-        return jsonify({"raw_yaml": raw, "config": parsed, "config_path": str(cfg_path)})
+        return jsonify(
+            {"raw_yaml": raw, "config": parsed, "config_path": str(cfg_path)}
+        )
 
     @app.route("/api/config/raw", methods=["POST"])
     def api_config_raw():
         import yaml
+
         raw = request.get_data(as_text=True)
         try:
             yaml.safe_load(raw)
@@ -240,6 +262,7 @@ def create_app(config: dict, output_dir: Path, config_path: Path | None = None) 
     @app.route("/api/config/structured", methods=["POST"])
     def api_config_structured():
         import yaml
+
         data = request.get_json(silent=True)
         if data is None:
             return jsonify({"error": "Invalid JSON"}), 400
@@ -249,7 +272,9 @@ def create_app(config: dict, output_dir: Path, config_path: Path | None = None) 
 
         def generate():
             try:
-                raw = yaml.dump(data, allow_unicode=True, default_flow_style=False, sort_keys=False)
+                raw = yaml.dump(
+                    data, allow_unicode=True, default_flow_style=False, sort_keys=False
+                )
                 tmp = cfg_path.with_suffix(".tmp")
                 tmp.write_text(raw)
                 tmp.rename(cfg_path)
@@ -287,11 +312,13 @@ def create_app(config: dict, output_dir: Path, config_path: Path | None = None) 
         app.config["SITE_TITLE"] = new_cfg.get("site", {}).get("title", "DocSync")
         app.config["BACKUP_BASE_DIR"] = new_cfg.get("backup", {}).get("base_dir")
 
-        return jsonify({
-            "ok": True,
-            "sources": app.config["SOURCES"],
-            "site_title": app.config["SITE_TITLE"],
-        })
+        return jsonify(
+            {
+                "ok": True,
+                "sources": app.config["SOURCES"],
+                "site_title": app.config["SITE_TITLE"],
+            }
+        )
 
     return app
 

@@ -1,0 +1,10 @@
+[Unit]
+Description=DocSync Remote Client — Watch for documentation changes
+
+[Path]
+PathModified=%h/docs/
+PathModified=%h/README.md
+PathModified=%h/CLAUDE.md
+
+[Install]
+WantedBy=multi-user.target

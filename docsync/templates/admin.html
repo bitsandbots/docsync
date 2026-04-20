@@ -250,6 +250,25 @@
           </div>
         </div>
 
+        <!-- Remote Setup -->
+        <div class="admin-card" id="remote-setup" style="grid-column: 1 / -1;">
+          <h3>Remote Client Setup</h3>
+          <p style="margin:.5rem 0 .75rem;font-size:.85rem;color:var(--text-muted,#64748b);">
+            Run this on remote hosts to prepare them as documentation sources.
+          </p>
+          <div class="field-row" style="flex-direction:column;align-items:stretch;gap:.75rem;">
+            <code style="background:var(--code-bg,#0a0e1a);color:#c8e6a0;padding:.6rem .8rem;border-radius:5px;font-family:'IBM Plex Mono',monospace;font-size:.78rem;white-space:pre-wrap;word-break:break-all;cursor:pointer;" onclick="copyInstallScript()" title="Click to copy">
+curl -sSL {{ base_url }}/scripts/install-remote-client.sh | bash
+            </code>
+            <span id="copy-feedback" style="font-size:.75rem;color:var(--success,#48bb78);opacity:0;transition:opacity .2s;">✓ Copied to clipboard</span>
+          </div>
+          <div style="margin-top:.75rem;display:flex;gap:.5rem;flex-wrap:wrap;">
+            <a href="/scripts/" class="header-badge" style="text-decoration:none;">Scripts Directory</a>
+            <a href="/scripts/README.md" class="header-badge" style="text-decoration:none;">Documentation</a>
+            <a href="/scripts/remotes-example.csv" class="header-badge" style="text-decoration:none;">CSV Template</a>
+          </div>
+        </div>
+
       </div><!-- .admin-grid -->
 
       <!-- Output log -->
@@ -513,6 +532,17 @@
   });
 
   // ── Status (JSON) ──────────────────────────────────────────────────────────
+  // ── Copy install script to clipboard ─────────────────────────────────────────
+  function copyInstallScript() {
+    var code = document.querySelector('#remote-setup code').textContent.trim();
+    navigator.clipboard.writeText(code).then(function () {
+      var feedback = document.getElementById('copy-feedback');
+      feedback.style.opacity = '1';
+      setTimeout(function () { feedback.style.opacity = '0'; }, 2000);
+    });
+  }
+
+  // ── Status ────────────────────────────────────────────────────────────────
   document.getElementById('btn-status').addEventListener('click', function () {
     var btn = this;
     btn.disabled = true;
