@@ -99,16 +99,24 @@ class TestThreeTierNavInventory:
         assert labels.index("docs") < labels.index("additional docs")
 
 
-# ── Docs-only source (no README, no additional) ────────────────────────────────
+# ── Source with README + Docs ──────────────────────────────────────────────────
 
 
-class TestDocsOnlyNavDocSync:
-    """DocSync source has only docs/ content — no README at root."""
+class TestDocSyncNavStructure:
+    """DocSync source has README + docs/ content — tests README-first ordering.
 
-    def test_no_readme_link_at_top(self, docsync_index: Page):
+    Note: The 'no README' case (primary_docs only, readme_doc=None) is covered by
+    unit tests in tests/test_generator.py::TestNavTreeBuilder::test_docs_folder_goes_to_primary.
+    """
+
+    def test_readme_link_at_top(self, docsync_index: Page):
+        """README link must appear first, before any <details> sections."""
         first = docsync_index.locator(".sidebar-project > *").first
         tag = first.evaluate("el => el.tagName.toLowerCase()")
-        assert tag == "details", f"Expected <details> first (no README), got <{tag}>"
+        assert tag == "a", f"Expected <a> first (README link), got <{tag}>"
+        # Verify it's actually the README link
+        href = first.evaluate("el => el.getAttribute('href')")
+        assert "readme" in href.lower(), f"Expected README href, got {href}"
 
     def test_docs_section_present(self, docsync_index: Page):
         summary = docsync_index.locator(

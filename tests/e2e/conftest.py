@@ -49,7 +49,7 @@ def inventory_index(page: Page, base_url: str) -> Page:
 
 @pytest.fixture
 def docsync_index(page: Page, base_url: str) -> Page:
-    """DocSync source index — Docs tier only, no root README."""
+    """DocSync source index — README + docs/ content (both tiers)."""
     page.goto(f"{base_url}/tools/docsync/index.html")
     page.wait_for_load_state("load")
     return page
